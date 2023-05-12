@@ -1,2 +1,2 @@
 # limefit
-gym tracking app
+gym tracking app with React Native
