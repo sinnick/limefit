@@ -1,34 +1,57 @@
 import React, { useState } from 'react';
-import { View, TextInput, StyleSheet, TouchableOpacity, Text, Image, ImageBackground } from 'react-native';
+import { View, TextInput, StyleSheet, TouchableOpacity, Text, Image, ImageBackground, Alert } from 'react-native';
+
 
 const LoginScreen = () => {
-    const [username, setUsername] = useState('');
+    const [dni, setDNI] = useState('37002007');
 
-    const handleLogin = () => {
-        // Perform login logic here
+    const handleLogin = async () => {
+        console.log('username: ', dni);
+        try {
+            const respuesta = await fetch('http://sinnick.duckdns.org:3000/api/login', {
+                method: 'POST',
+                body: JSON.stringify({ dni: dni }),
+            })
+            console.log({respuesta});
+            const json = await respuesta.json();
+            const { user } = json;
+            console.log('user: ', user);
+            // Alert.alert(
+            //     'Hola',
+            //     `Usuario: ${user.NOMBRE}`
+            // )
+            alert(`HOLA ${user.NOMBRE} ${user.APELLIDO}. DNI: ${user.DNI} Email: ${user.EMAIL}`)
+        } catch (error) {
+            console.error('error ', error);
+        }
+        console.log('handleLogin');
     };
 
     return (
         <View style={styles.container}>
+            {/* <ImageBackground style={styles.logo} source={require('../assets/bg-fit.png')} > */}
             <View style={styles.logoContainer}>
-            <View style={styles.view_titulo_logo}>
-                <Text style={styles.text_titulo_logo}>L I M E F I T</Text>
-            </View>
-                <ImageBackground style={styles.logo} source={require('../assets/bg-fit.png')} >
-                </ImageBackground>
+                <View style={styles.view_titulo_logo}>
+                    <Text style={styles.text_titulo_logo}>L I M E F I T</Text>
+                </View>
             </View>
             <View style={styles.inputContainer}>
                 <TextInput
                     style={styles.input}
                     placeholder="Ingresa tu DNI"
                     placeholderTextColor={'#fff8'}
-                    onChangeText={text => setUsername(text)}
-                    value={username}
+                    onChangeText={text => setDNI(text)}
+                    value={dni}
                 />
                 <TouchableOpacity style={styles.button} onPress={handleLogin}>
-                    <Text style={styles.buttonText}>Login</Text>
+                    <Text style={styles.buttonText}>Login
+                        {/* <View style={styles.login_arrow}>
+                            <Text style={styles.text_login_arrow}>→</Text>
+                        </View> */}
+                    </Text>
                 </TouchableOpacity>
             </View>
+            {/* </ImageBackground> */}
         </View>
     );
 };
@@ -38,7 +61,7 @@ const styles = StyleSheet.create({
         flex: 1,
         alignItems: 'center',
         justifyContent: 'flex-start',
-        backgroundColor: '#4F6367',
+        backgroundColor: '#101010',
     },
     logoContainer: {
         flex: 1,
@@ -63,7 +86,7 @@ const styles = StyleSheet.create({
     },
     input: {
         height: 40,
-        borderColor: '#ccc',
+        borderColor: '#fff',
         color: '#fff',
         borderWidth: 1,
         borderRadius: 5,
@@ -72,13 +95,17 @@ const styles = StyleSheet.create({
     },
     button: {
         backgroundColor: '#C2E000',
-        paddingVertical: 10,
+        paddingVertical: 15,
         borderRadius: 5,
     },
     buttonText: {
-        color: '#4F6367',
+        color: '#101010',
         textAlign: 'center',
         fontWeight: 'bold',
+        alignContent: 'center',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontSize: 22,
     },
     view_titulo_logo: {
         backgroundColor: 'transparent',
@@ -96,6 +123,23 @@ const styles = StyleSheet.create({
         fontSize: 40,
         fontWeight: 'bold',
     },
+    login_arrow: {
+        marginBottom: 10,
+        borderColor: '#000',
+        borderWidth: 1,
+        borderRadius: 50,
+        marginLeft: 200,
+        justifyContent: 'center',
+        alignContent: 'center',
+    },
+    text_login_arrow: {
+        color: '#000',
+        fontSize: 20,
+        fontWeight: 'bold',
+        alignContent: 'center',
+        alignItems: 'center',
+        justifyContent: 'center',
+    }
 });
 
 export default LoginScreen;
