@@ -1,6 +1,6 @@
 import LoginScreen from './components/LoginScreen';
 import Inicio from './components/Inicio';
-import { useContext, useState } from 'react';
+import { useState } from 'react';
 import UserContext from './context/UserContext';
 
 //react navigation 
@@ -10,7 +10,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 const Stack = createNativeStackNavigator();
 
 export default function App() {
-  const { user, setUser } = useContext(UserContext);
+  const { user, setUser } = useState({});
   //! check this
   return (
     <UserContext.Provider value={{ user, setUser }}>
