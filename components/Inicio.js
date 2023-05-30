@@ -1,43 +1,45 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, {useState, useEffect} from 'react';
 import { View, StyleSheet, Image, Text } from 'react-native';
-import axios from 'axios';
+import UserBadge from './UserBadge';
 
 const Inicio = ({navigation}) => {
-  const [chofer, setChofer] = useState('Bienvenido,  ');
   const [visible, setVisible] = useState(false);
   const showModal = () => setVisible(true);
   const hideModal = () => setVisible(false);
   
   useEffect(() => {
-    async function getChofer() {
-      console.log('handlechofer');
+    async function getUsuario() {
+      console.log('getting user data..');
       let respuesta;
       try {
+        let temp_user = await AsyncStorage.getItem('user');
+        console.log('temp_user: ', temp_user);
+        setUser(JSON.parse(temp_user))
+        // let token = await AsyncStorage.getItem('token');
+        // console.log('token: ', token);
+        // let data = JSON.stringify({
+        //   "token": token,
+        // });
   
-        let token = await AsyncStorage.getItem('token');
-        console.log('token: ', token);
-        let data = JSON.stringify({
-          "token": token,
-        });
-  
-        let config = {
-          method: 'post',
-          maxBodyLength: Infinity,
-          url: `http://apps.visionblo.fer/rb/app/api/ConsultarDatosSesion`,
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          data: data
-        };
-        respuesta = await axios.request(config);
-        setChofer(`Bienvenido, \n${respuesta.data.contacto.nombre}`);
-        AsyncStorage.setItem('contacto', JSON.stringify(respuesta.data.contacto));
+        // let config = {
+        //   method: 'post',
+        //   maxBodyLength: Infinity,
+        //   url: `http://apps.visionblo.fer/rb/app/api/ConsultarDatosSesion`,
+        //   headers: {
+        //     'Content-Type': 'application/json',
+        //   },
+        //   data: data
+        // };
+        // respuesta = await axios.request(config);
+        // setChofer(`Bienvenido, \n${respuesta.data.contacto.nombre}`);
+        // AsyncStorage.setItem('contacto', JSON.stringify(respuesta.data.contacto));
+        
       } catch (error) {
         console.log('error al obtener el chofer', error);
       }
     }
-    getChofer();
+    getUsuario();
   }, []);
   
   const scanQR = () => {
@@ -52,18 +54,7 @@ const Inicio = ({navigation}) => {
 
   return (
     <View style={styles.container}>
-      <View style={styles.cardUsuario}>
-        <Image style={styles.imagePerfil} />
-        <View style={styles.dividerImagen}></View>
-        <View style={styles.view_texto_usuario}>
-          <Text style={styles.texto_usuario}>
-            Fernando Masso
-          </Text>
-          <Text style={styles.texto_usuario_detalles} adjustsFontSizeToFit={true}>
-            Aca van mas detalles chotos y quizas algun logo 🏋
-          </Text>
-        </View>
-      </View>
+      <UserBadge />
       <View style={styles.titulo_rutinas}>
         <Text style={styles.texto_rutinas}>
           Rutinas
@@ -120,44 +111,6 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-start',
     alignItems: 'center',
     marginBottom: 200
-  },
-  imagePerfil: {
-    borderTopLeftRadius: 5,
-    borderBottomLeftRadius: 5,
-    width: 100,
-    height: 100,
-    backgroundColor: '#ccc',
-  },
-  dividerImagen: {
-    height: 100,
-    width: 5,
-    color: '#000',
-    backgroundColor: '#000',
-    margin: 0
-  },
-  view_texto_usuario: {
-    justifyContent: 'flex-start',
-    alignContent: 'flex-start',
-    alignItems: 'flex-start',
-    height: '90%',
-    width: '100%',
-  },
-  texto_usuario: { 
-    color: '#000',
-    fontSize: 15,
-    fontWeight: 'bold',
-    marginLeft: 10,
-    alignSelf: 'flex-start',
-    textAlign: 'left',
-    width: '90%',
-  },
-  texto_usuario_detalles: {
-    marginTop: 5,
-    color: '#000',
-    marginLeft: 10,
-    alignSelf: 'flex-start',
-    textAlign: 'left',
-    width: '65%',
   },
   titulo_rutinas: {
     flex: .2,

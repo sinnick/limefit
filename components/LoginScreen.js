@@ -1,9 +1,15 @@
-import React, { useState } from 'react';
+import { useState, useContext } from 'react';
 import { View, TextInput, StyleSheet, TouchableOpacity, Text, Image, ImageBackground, Alert } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import UserContext from '../context/UserContext';
 
 
-const LoginScreen = () => {
-    const [dni, setDNI] = useState('37002007');
+
+const LoginScreen = ({navigation}) => {
+    const { user, setUser } = useContext(UserContext);
+    //! and this
+    const [ dni, setDNI ] = useState('37002007');
+    console.log(`user, setUser `, user, setUser);
 
     const handleLogin = async () => {
         console.log('username: ', dni);
@@ -14,13 +20,16 @@ const LoginScreen = () => {
             })
             console.log({respuesta});
             const json = await respuesta.json();
-            const { user } = json;
-            console.log('user: ', user);
-            // Alert.alert(
-            //     'Hola',
-            //     `Usuario: ${user.NOMBRE}`
-            // )
-            alert(`HOLA ${user.NOMBRE} ${user.APELLIDO}. DNI: ${user.DNI} Email: ${user.EMAIL}`)
+            const usuario = json.user;
+            if (!usuario) {
+                Alert.alert('Usuario no encontrado');
+                return;
+            }
+            console.log('usuario: ', usuario);
+            setUser(usuario);
+            
+            AsyncStorage.setItem('user', JSON.stringify(usuario));
+            navigation.navigate('Inicio');
         } catch (error) {
             console.error('error ', error);
         }
@@ -28,31 +37,33 @@ const LoginScreen = () => {
     };
 
     return (
-        <View style={styles.container}>
-            {/* <ImageBackground style={styles.logo} source={require('../assets/bg-fit.png')} > */}
-            <View style={styles.logoContainer}>
-                <View style={styles.view_titulo_logo}>
-                    <Text style={styles.text_titulo_logo}>L I M E F I T</Text>
-                </View>
-            </View>
-            <View style={styles.inputContainer}>
-                <TextInput
-                    style={styles.input}
-                    placeholder="Ingresa tu DNI"
-                    placeholderTextColor={'#fff8'}
-                    onChangeText={text => setDNI(text)}
-                    value={dni}
-                />
-                <TouchableOpacity style={styles.button} onPress={handleLogin}>
-                    <Text style={styles.buttonText}>Login
-                        {/* <View style={styles.login_arrow}>
+        <UserContext.Provider value={{ user, setUser }}>
+            <View style={styles.container}>
+                <ImageBackground style={styles.background} source={require('../assets/bg-lime.jpg')} >
+                    <View style={styles.logoContainer}>
+                        <View style={styles.view_titulo_logo}>
+                            <Text style={styles.text_titulo_logo}>L I M E F I T</Text>
+                        </View>
+                    </View>
+                    <View style={styles.inputContainer}>
+                        <TextInput
+                            style={styles.input}
+                            placeholder="Ingresa tu DNI"
+                            placeholderTextColor={'#fff8'}
+                            onChangeText={text => setDNI(text)}
+                            value={dni}
+                        />
+                        <TouchableOpacity style={styles.button} onPress={handleLogin}>
+                            <Text style={styles.buttonText}>Login
+                                {/* <View style={styles.login_arrow}>
                             <Text style={styles.text_login_arrow}>→</Text>
                         </View> */}
-                    </Text>
-                </TouchableOpacity>
+                            </Text>
+                        </TouchableOpacity>
+                    </View>
+                </ImageBackground>
             </View>
-            {/* </ImageBackground> */}
-        </View>
+        </UserContext.Provider>
     );
 };
 
@@ -139,7 +150,15 @@ const styles = StyleSheet.create({
         alignContent: 'center',
         alignItems: 'center',
         justifyContent: 'center',
-    }
+    },
+     background: {
+        flex: 1,
+        width: '100%',
+        height: '100%',
+        resizeMode: 'cover',
+        justifyContent: 'center',
+        alignItems: 'center',
+     }
 });
 
 export default LoginScreen;

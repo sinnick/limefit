@@ -1,6 +1,7 @@
-import { StyleSheet, Text, View } from 'react-native';
 import LoginScreen from './components/LoginScreen';
 import Inicio from './components/Inicio';
+import { useContext, useState } from 'react';
+import UserContext from './context/UserContext';
 
 //react navigation 
 import { NavigationContainer } from '@react-navigation/native';
@@ -9,15 +10,19 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 const Stack = createNativeStackNavigator();
 
 export default function App() {
+  const { user, setUser } = useContext(UserContext);
+  //! check this
   return (
+    <UserContext.Provider value={{ user, setUser }}>
       <NavigationContainer>
         <Stack.Navigator
-          screenOptions={{ headerShown: false }}
+          screenOptions={{ headerShown: true }}
           initialRouteName="Login">
-          {/* initialRouteName="Inicio"> */}
+           {/* initialRouteName="Inicio"> */}
           <Stack.Screen name="Login" component={LoginScreen} />
           <Stack.Screen name="Inicio" component={Inicio} />
         </Stack.Navigator>
       </NavigationContainer>
+    </UserContext.Provider>
   );
 }
