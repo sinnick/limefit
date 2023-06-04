@@ -27,15 +27,27 @@ const UserBadge = () => {
 export default UserBadge
 
 const styles = StyleSheet.create({
+    cardUsuario: {
+        flexDirection: 'row',
+        justifyContent: 'flex-start',
+        alignItems: 'center',
+        backgroundColor: '#adfa1d',
+        maxHeight: 70,
+        width: '85%',
+        marginHorizontal: 20,
+        marginVertical: 50,
+        borderRadius: 5,
+    },
     imagePerfil: {
         borderTopLeftRadius: 5,
         borderBottomLeftRadius: 5,
-        width: 100,
-        height: 100,
+        width: '20%',
+        height: '100%',
         backgroundColor: '#ccc',
+        resizeMode: 'contain',
     },
     dividerImagen: {
-        height: 100,
+        height: '100%',
         width: 5,
         color: '#000',
         backgroundColor: '#000',
@@ -57,7 +69,7 @@ const styles = StyleSheet.create({
         width: '90%',
     },
     texto_usuario_detalles: {
-        marginTop: 5,
+        marginVertical: 5,
         color: '#000',
         marginLeft: 10,
         alignSelf: 'flex-start',

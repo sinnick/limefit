@@ -1,65 +1,42 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import React, {useState, useEffect} from 'react';
-import { View, StyleSheet, Image, Text } from 'react-native';
+import React, {useState, useEffect, useContext} from 'react';
+import { View, StyleSheet, Text,  ScrollView, TouchableOpacity } from 'react-native';
 import UserBadge from './UserBadge';
+import UserContext from '../context/UserContext';
+import RutinasContext from '../context/RutinasContext';
 
 const Inicio = ({navigation}) => {
+  const { user, setUser } = useContext(UserContext);
+  const { rutinas, setRutinas } = useContext(RutinasContext);
   const [visible, setVisible] = useState(false);
   const showModal = () => setVisible(true);
   const hideModal = () => setVisible(false);
   
-  useEffect(() => {
-    async function getUsuario() {
-      console.log('getting user data..');
-      let respuesta;
-      try {
-        let temp_user = await AsyncStorage.getItem('user');
-        console.log('temp_user: ', temp_user);
-        setUser(JSON.parse(temp_user))
-        // let token = await AsyncStorage.getItem('token');
-        // console.log('token: ', token);
-        // let data = JSON.stringify({
-        //   "token": token,
-        // });
-  
-        // let config = {
-        //   method: 'post',
-        //   maxBodyLength: Infinity,
-        //   url: `http://apps.visionblo.fer/rb/app/api/ConsultarDatosSesion`,
-        //   headers: {
-        //     'Content-Type': 'application/json',
-        //   },
-        //   data: data
-        // };
-        // respuesta = await axios.request(config);
-        // setChofer(`Bienvenido, \n${respuesta.data.contacto.nombre}`);
-        // AsyncStorage.setItem('contacto', JSON.stringify(respuesta.data.contacto));
-        
-      } catch (error) {
-        console.log('error al obtener el chofer', error);
-      }
+  const getRutinas = async () => {
+    try {
+        const respuesta = await fetch('http://sinnick.duckdns.org:3000/api/rutinas');
+        const json = await respuesta.json();
+        console.log({ json });
+        setRutinas(json.result_rutinas);
+    } catch (error) {
+        console.error('error ', error);
     }
-    getUsuario();
-  }, []);
-  
-  const scanQR = () => {
-    navigation.navigate('Scanner');
-  };
-  const Salir = () => {
-    AsyncStorage.removeItem('token');
-    AsyncStorage.removeItem('movil_id');
-    AsyncStorage.removeItem('contacto');
-    navigation.navigate('Login');
-  };
+}
+
+useEffect(() => {
+    getRutinas();
+}, []);
 
   return (
     <View style={styles.container}>
       <UserBadge />
-      <View style={styles.titulo_rutinas}>
-        <Text style={styles.texto_rutinas}>
-          Rutinas
-        </Text>
-      </View>
+      <ScrollView style={styles.scrollView}>
+        <TouchableOpacity style={styles.card} onPress={() => navigation.navigate('Rutinas')}>
+          <Text style={styles.texto_rutinas}>
+            RUTINAS    →
+          </Text>
+        </TouchableOpacity>
+
+      </ScrollView>
     </View>
   );
 };
@@ -72,15 +49,6 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-start',
     backgroundColor: '#101010',
   },
-  button: {
-    textAlign: 'center',
-    backgroundColor: '#fff',
-    minWidth: 200,
-    marginVertical: 20,
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 5,
-  },
   buttonText: {
     textAlign: 'center',
     color: '#7d1539',
@@ -89,7 +57,6 @@ const styles = StyleSheet.create({
   },
   texto: {
     color: '#000',
-    // marginBottom: 200,
     lineHeight: 25,
     marginLeft: 'auto',
     marginRight: 'auto',
@@ -112,18 +79,33 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 200
   },
-  titulo_rutinas: {
-    flex: .2,
-    width: '100%',
+  card: {
+    textAlign: 'center',
     backgroundColor: '#fff1',
-    height: 30,
-    justifyContent: 'center',
+    width: '70%',
+    height: 70,
+    alignSelf: 'center',
+    minWidth: 200,
+    marginVertical: 20,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 5,
+    alignContent: 'center',
     alignItems: 'center',
-    alignSelf: 'flex-start',
+    justifyContent: 'center',
   },
   texto_rutinas: {
-    color: '#fff',
-  }
+    color: '#adfa1d',
+    alignContent: 'center',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  scrollView: {
+    flex: 1,
+    width: '100%',
+    backgroundColor: '#fff2',
+    alignContent: 'center',
+  },
 });
 
 export default Inicio;
