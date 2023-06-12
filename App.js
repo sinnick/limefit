@@ -1,6 +1,7 @@
 import LoginScreen from './components/LoginScreen';
 import Inicio from './components/Inicio';
 import Rutinas from './components/Rutinas';
+import Rutina from './components/Rutina';
 import { useState } from 'react';
 //context
 import UserContext from './context/UserContext';
@@ -20,13 +21,15 @@ export default function App() {
     <RutinasContext.Provider value={{ rutinas, setRutinas }}>
       <NavigationContainer>
         <Stack.Navigator
-          screenOptions={{ headerShown: false }}
+          screenOptions={{ headerShown: true }}
           initialRouteName="Login">
+           {/* initialRouteName="Rutina"> */}
           {/* initialRouteName="Inicio"> */}
           {/* initialRouteName="Rutinas"> */}
           <Stack.Screen name="Login" component={LoginScreen} />
           <Stack.Screen name="Inicio" component={Inicio} />
           <Stack.Screen name="Rutinas" component={Rutinas} />
+          <Stack.Screen name="Rutina" component={Rutina} />
         </Stack.Navigator>
       </NavigationContainer>
     </RutinasContext.Provider>

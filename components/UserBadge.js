@@ -35,7 +35,7 @@ const styles = StyleSheet.create({
         maxHeight: 70,
         width: '85%',
         marginHorizontal: 20,
-        marginVertical: 50,
+        marginVertical: 10,
         borderRadius: 5,
     },
     imagePerfil: {
