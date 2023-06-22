@@ -1,6 +1,5 @@
 import { useState, useContext } from 'react';
 import { View, TextInput, StyleSheet, TouchableOpacity, Text, Image, ImageBackground, Alert } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import UserContext from '../context/UserContext';
 
 
@@ -14,7 +13,7 @@ const LoginScreen = ({navigation}) => {
     const handleLogin = async () => {
         console.log('username: ', dni);
         try {
-            const respuesta = await fetch('http://sinnick.duckdns.org:3000/api/login', {
+            const respuesta = await fetch('http://sinnick-u.duckdns.org:3000/api/login', {
                 method: 'POST',
                 body: JSON.stringify({ dni: dni }),
             })
@@ -28,7 +27,7 @@ const LoginScreen = ({navigation}) => {
             console.log('usuario: ', usuario);
             setUser(usuario);
             
-            AsyncStorage.setItem('user', JSON.stringify(usuario));
+            
             navigation.navigate('Inicio');
         } catch (error) {
             console.error('error ', error);

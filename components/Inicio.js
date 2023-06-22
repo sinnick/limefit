@@ -13,7 +13,7 @@ const Inicio = ({navigation}) => {
   
   const getRutinas = async () => {
     try {
-        const respuesta = await fetch('http://sinnick.duckdns.org:3000/api/rutinas');
+        const respuesta = await fetch('http://sinnick-u.duckdns.org:3000/api/rutinas');
         const json = await respuesta.json();
         console.log({ json });
         setRutinas(json.result_rutinas);

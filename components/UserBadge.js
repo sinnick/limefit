@@ -8,7 +8,7 @@ const UserBadge = () => {
     return (
         <View style={styles.cardUsuario}>
             <Image
-                source={user.FOTO ? { uri: user.FOTO } : require('../assets/user.png')}
+                source={user.FOTO ? { uri: user.FOTO } : require('../assets/clock.png')}
                 style={styles.imagePerfil} />
             <View style={styles.dividerImagen}></View>
             <View style={styles.view_texto_usuario}>
