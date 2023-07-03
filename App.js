@@ -21,11 +21,12 @@ export default function App() {
     <RutinasContext.Provider value={{ rutinas, setRutinas }}>
       <NavigationContainer>
         <Stack.Navigator
-          screenOptions={{ headerShown: true }}
-          initialRouteName="Login">
-           {/* initialRouteName="Rutina"> */}
-          {/* initialRouteName="Inicio"> */}
-          {/* initialRouteName="Rutinas"> */}
+          screenOptions={{ headerShown: false }}
+          initialRouteName="Login"
+          // initialRouteName="Rutina" 
+          // initialRouteName="Inicio"
+          // initialRouteName="Rutinas"
+          >
           <Stack.Screen name="Login" component={LoginScreen} />
           <Stack.Screen name="Inicio" component={Inicio} />
           <Stack.Screen name="Rutinas" component={Rutinas} />

@@ -95,9 +95,10 @@ const styles = StyleSheet.create({
         width: '80%',
     },
     input: {
-        height: 40,
+        height: 55,
         borderColor: '#fff',
         color: '#fff',
+        fontSize: 18,
         borderWidth: 1,
         borderRadius: 5,
         paddingHorizontal: 10,
@@ -157,7 +158,7 @@ const styles = StyleSheet.create({
         resizeMode: 'cover',
         justifyContent: 'center',
         alignItems: 'center',
-     }
+    }
 });
 
 export default LoginScreen;

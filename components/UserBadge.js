@@ -7,18 +7,20 @@ const UserBadge = () => {
     console.log('UserBadge', {user});
     return (
         <View style={styles.cardUsuario}>
+            <View style={styles.containerImagen}>
             <Image
                 source={user.FOTO ? { uri: user.FOTO } : require('../assets/clock.png')}
                 style={styles.imagePerfil} />
-            <View style={styles.dividerImagen}></View>
+            </View>
+            {/* <View style={styles.dividerImagen}></View> */}
             <View style={styles.view_texto_usuario}>
                 <Text style={styles.texto_usuario} >
-                    {user.SEXO == 'H' ? 'Bienvenido, ' : 'Bienvenida, '}
-                    {user.NOMBRE || ''}
+                    {user.SEXO == 'M' ? 'Bienvenida, ' : 'Bienvenido, '}
+                    {user.NOMBRE || 'Nombre Generico'}
                 </Text>
-                <Text style={styles.texto_usuario_detalles} adjustsFontSizeToFit={true}>
-                    Aca van mas detalles chotos y quizas algun logo 🏋
-                </Text>
+                {/* <Text style={styles.texto_usuario_detalles} adjustsFontSizeToFit={true}>
+                    
+                </Text> */}
             </View>
         </View>
     )
@@ -32,16 +34,15 @@ const styles = StyleSheet.create({
         justifyContent: 'flex-start',
         alignItems: 'center',
         backgroundColor: '#adfa1d',
-        maxHeight: 70,
+        height: 40,
         width: '85%',
         marginHorizontal: 20,
         marginVertical: 10,
-        borderRadius: 5,
+        borderRadius: 50,
     },
     imagePerfil: {
-        borderTopLeftRadius: 5,
-        borderBottomLeftRadius: 5,
-        width: '20%',
+        borderRadius: 100,
+        width: 40,
         height: '100%',
         backgroundColor: '#ccc',
         resizeMode: 'contain',
@@ -54,19 +55,21 @@ const styles = StyleSheet.create({
         margin: 0
     },
     view_texto_usuario: {
-        justifyContent: 'flex-start',
-        alignContent: 'flex-start',
-        alignItems: 'flex-start',
+        justifyContent: 'center',
+        alignContent: 'center',
+        alignItems: 'center',
         height: '90%',
         width: '100%',
     },
     texto_usuario: {
         color: '#000',
-        fontSize: 15,
+        fontSize: 18,
         fontWeight: 'bold',
-        marginLeft: 10,
-        alignSelf: 'flex-start',
-        width: '90%',
+        alignSelf: 'center',
+        textAlign: 'center',
+        justifyContent: 'center',
+        width: '100%',
+        marginRight: 50,
     },
     texto_usuario_detalles: {
         marginVertical: 5,
@@ -76,4 +79,12 @@ const styles = StyleSheet.create({
         textAlign: 'left',
         width: '65%',
     },
+    containerImagen: {
+        borderWidth: 5, 
+        marginLeft: -1,
+        marginTop: -5,
+        marginBottom: -5,
+        borderRightColor: '#000',
+        borderRadius: 100,
+    }
 })

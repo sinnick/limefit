@@ -1,5 +1,5 @@
 import React, {useState, useEffect, useContext} from 'react';
-import { View, StyleSheet, Text,  ScrollView, TouchableOpacity } from 'react-native';
+import { View, StyleSheet, Text,  ScrollView, TouchableOpacity, ImageBackground } from 'react-native';
 import UserBadge from './UserBadge';
 import UserContext from '../context/UserContext';
 import RutinasContext from '../context/RutinasContext';
@@ -31,11 +31,60 @@ useEffect(() => {
       <UserBadge />
       <ScrollView style={styles.scrollView}>
         <TouchableOpacity style={styles.card} onPress={() => navigation.navigate('Rutinas')}>
+          <View style={styles.card_image_container}>
+          <ImageBackground source={require('../assets/bg-rutinas.jpg')} style={styles.image_bg_cards}
+            imageStyle={{ borderRadius: 20}}
+            >
+          </ImageBackground>
+          </View>
           <Text style={styles.texto_rutinas}>
             RUTINAS    →
           </Text>
         </TouchableOpacity>
-
+        <TouchableOpacity style={styles.card} onPress={() => navigation.navigate('Rutinas')}>
+          <View style={styles.card_image_container}>
+          <ImageBackground source={require('../assets/bg-suplementos.jpg')} style={styles.image_bg_cards}
+            imageStyle={{ borderRadius: 20}}
+            >
+          </ImageBackground>
+          </View>
+          <Text style={styles.texto_rutinas}>
+            SUMPLEMENTOS    →
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.card} onPress={() => navigation.navigate('Rutinas')}>
+          <View style={styles.card_image_container}>
+          <ImageBackground source={require('../assets/bg-food.jpg')} style={styles.image_bg_cards}
+            imageStyle={{ borderRadius: 20}}
+            >
+          </ImageBackground>
+          </View>
+          <Text style={styles.texto_rutinas}>
+            COMIDAS    →
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.card} onPress={() => navigation.navigate('Rutinas')}>
+          <View style={styles.card_image_container}>
+          <ImageBackground source={require('../assets/bg-sleep.jpg')} style={styles.image_bg_cards}
+            imageStyle={{ borderRadius: 20}}
+            >
+          </ImageBackground>
+          </View>
+          <Text style={styles.texto_rutinas}>
+            SUEÑO    →
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.card} onPress={() => navigation.navigate('Rutinas')}>
+          <View style={styles.card_image_container}>
+          <ImageBackground source={require('../assets/bg-metas.jpg')} style={styles.image_bg_cards}
+            imageStyle={{ borderRadius: 20}}
+            >
+          </ImageBackground>
+          </View>
+          <Text style={styles.texto_rutinas}>
+            METAS    →
+          </Text>
+        </TouchableOpacity>
       </ScrollView>
     </View>
   );
@@ -43,7 +92,7 @@ useEffect(() => {
 
 const styles = StyleSheet.create({
   container: {
-    marginTop: 30,
+    marginTop: 25,
     flex: 1,
     alignItems: 'center',
     justifyContent: 'flex-start',
@@ -80,32 +129,46 @@ const styles = StyleSheet.create({
     marginBottom: 200
   },
   card: {
-    textAlign: 'center',
+    opacity: 1,
     backgroundColor: '#fff1',
     width: '70%',
     height: 70,
     alignSelf: 'center',
     minWidth: 200,
     marginVertical: 20,
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 5,
-    alignContent: 'center',
-    alignItems: 'center',
+    borderRadius: 20,
+    alignContent: 'flex-start',
+    alignItems: 'flex-start',
     justifyContent: 'center',
   },
   texto_rutinas: {
+    opacity: 1,
     color: '#adfa1d',
-    alignContent: 'center',
-    alignItems: 'center',
-    justifyContent: 'center',
+    fontSize: 30,
+    fontWeight: 'bold',
+    paddingLeft: 10,
   },
   scrollView: {
     flex: 1,
     width: '100%',
-    backgroundColor: '#fff2',
+    backgroundColor: '#101010',
     alignContent: 'center',
   },
+  image_bg_cards: {
+    justifyContent: 'center',
+    opacity: 0.3,
+    width: '100%',
+    height: '100%',
+  },
+  card_image_container: {
+    width: '100%',
+    height: '100%',
+    alignContent: 'center',
+    alignItems: 'center',
+    justifyContent: 'center',
+    resizeMode: 'cover',
+    position: 'absolute',
+  }
 });
 
 export default Inicio;
