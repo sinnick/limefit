@@ -1,10 +1,13 @@
 import { useState, useContext } from 'react';
 import { View, TextInput, StyleSheet, TouchableOpacity, Text, Image, ImageBackground, Alert } from 'react-native';
 import UserContext from '../context/UserContext';
-
-
+import { useFonts } from 'expo-font';
+import { URL_API } from '../config';
 
 const LoginScreen = ({navigation}) => {
+    const [fontsLoaded] = useFonts({
+        'Work-Sans': require('../assets/fonts/Work_Sans/WorkSans-VariableFont_wght.ttf'),
+      });
     const { user, setUser } = useContext(UserContext);
     //! and this
     const [ dni, setDNI ] = useState('37002007');
@@ -13,7 +16,7 @@ const LoginScreen = ({navigation}) => {
     const handleLogin = async () => {
         console.log('username: ', dni);
         try {
-            const respuesta = await fetch('http://sinnick-u.duckdns.org:3000/api/login', {
+            const respuesta = await fetch(`${URL_API}/login`, {
                 method: 'POST',
                 body: JSON.stringify({ dni: dni }),
             })
@@ -38,10 +41,10 @@ const LoginScreen = ({navigation}) => {
     return (
         <UserContext.Provider value={{ user, setUser }}>
             <View style={styles.container}>
-                <ImageBackground style={styles.background} source={require('../assets/bg-lime.jpg')} >
+                <ImageBackground style={styles.background} source={require('../assets/bg-2.jpg')} >
                     <View style={styles.logoContainer}>
                         <View style={styles.view_titulo_logo}>
-                            <Text style={styles.text_titulo_logo}>L I M E F I T</Text>
+                            <Text style={styles.text_titulo_logo} >L I M E F I T</Text>
                         </View>
                     </View>
                     <View style={styles.inputContainer}>
@@ -131,8 +134,9 @@ const styles = StyleSheet.create({
         backgroundColor: 'transparent',
         justifyContent: 'center',
         color: '#adfa1d',
-        fontSize: 40,
-        fontWeight: 'bold',
+        fontFamily: 'Work-Sans',
+        fontSize: 50,
+        fontWeight: '900',
     },
     login_arrow: {
         marginBottom: 10,

@@ -4,23 +4,19 @@ import UserContext from "../context/UserContext"
 
 const UserBadge = () => {
     const { user, setUser } = useContext(UserContext)
-    console.log('UserBadge', {user});
+    console.log('UserBadge', { user });
     return (
         <View style={styles.cardUsuario}>
             <View style={styles.containerImagen}>
-            <Image
-                source={user.FOTO ? { uri: user.FOTO } : require('../assets/clock.png')}
-                style={styles.imagePerfil} />
+                <Image
+                    source={user.FOTO ? { uri: user.FOTO } : require('../assets/clock.png')}
+                    style={styles.imagePerfil} />
             </View>
-            {/* <View style={styles.dividerImagen}></View> */}
             <View style={styles.view_texto_usuario}>
                 <Text style={styles.texto_usuario} >
                     {user.SEXO == 'M' ? 'Bienvenida, ' : 'Bienvenido, '}
                     {user.NOMBRE || 'Nombre Generico'}
                 </Text>
-                {/* <Text style={styles.texto_usuario_detalles} adjustsFontSizeToFit={true}>
-                    
-                </Text> */}
             </View>
         </View>
     )
@@ -30,6 +26,7 @@ export default UserBadge
 
 const styles = StyleSheet.create({
     cardUsuario: {
+        marginTop: 65,
         flexDirection: 'row',
         justifyContent: 'flex-start',
         alignItems: 'center',
@@ -80,7 +77,7 @@ const styles = StyleSheet.create({
         width: '65%',
     },
     containerImagen: {
-        borderWidth: 5, 
+        borderWidth: 5,
         marginLeft: -1,
         marginTop: -5,
         marginBottom: -5,
