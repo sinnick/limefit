@@ -1,34 +1,39 @@
 import { useState } from 'react';
-import {Text, View, StyleSheet, ImageBackground, Image, TextInput, TouchableOpacity, ScrollView} from 'react-native'
+import { Text, View, StyleSheet, ImageBackground, Image, TextInput, TouchableOpacity, ScrollView } from 'react-native'
 import UserBadge from './UserBadge';
 import CardEjercicio from './CardEjercicio';
 
-const Rutina = ({route, navigation}) => {
-    console.log({route});
-    console.log({navigation});
-  return (
-    <View style={styles.container}>
+const Rutina = ({ route, navigation }) => {
+    console.log({ route });
+    console.log({ navigation });
+    return (
+        <View style={styles.container}>
             <UserBadge />
-    <View>
-        <Text style={styles.rutina_nombre}>
-            {route.params.rutina.NOMBRE}
-        </Text>
-        <Text style={styles.rutina_duracion}>
-            <Image source={require('../assets/clock.png')} style={[styles.icon, {width: 20, height: 20}]} />
-            {route.params.rutina.DURACION}
-        </Text>
-    </View>
-    <ScrollView style={styles.scrollView}>
-        {route.params.rutina.EJERCICIOS.map((ejercicio, index) => {
-            return(
-                <CardEjercicio ejercicio={ejercicio} index={index} key={index}/>
-            )
-        })}
-    </ScrollView>
-        
-        
-    </View>
-  )
+            <View>
+                <Text style={styles.rutina_nombre}>
+                    {route.params.rutina.NOMBRE}
+                </Text>
+            </View>
+            <ScrollView style={styles.scrollView}>
+                {route.params.rutina.DIAS.map((dia, index) => {
+                    return (
+                        <View key={index}>
+                            <Text style={styles.rutina_dia}>
+                                {dia.day}
+                            </Text>
+                            {dia.exercises.map((ejercicio, index) => {
+                                return (
+                                    <CardEjercicio ejercicio={ejercicio} index={index} key={index} />
+                                )
+                            })}
+                        </View>
+                    )
+                })}
+            </ScrollView>
+
+
+        </View>
+    )
 }
 const styles = StyleSheet.create({
     container: {
@@ -62,6 +67,11 @@ const styles = StyleSheet.create({
     },
     rutina_nombre: {
         color: '#fff',
+        alignSelf: 'flex-start',
+        fontSize: 30,
+    },
+    rutina_dia: {
+        color: '#adfa1d',
         alignSelf: 'flex-start',
         fontSize: 30,
     },

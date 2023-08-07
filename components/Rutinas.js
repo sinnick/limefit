@@ -9,32 +9,26 @@ import { FlatList } from 'react-native-web';
 const Rutinas = ({ navigation }) => {
     const { user, setUser } = useContext(UserContext);
     const { rutinas, setRutinas } = useContext(RutinasContext);
-    
+
     console.log({ rutinas });
 
     return (
         <View style={styles.container}>
-            <ImageBackground source={require('../assets/chalk.jpg')} style={styles.background}>
-                <UserBadge />
-                <ScrollView style={styles.scrollView}>
-                    <Text style={styles.titulo_rutinas}>
-                        Rutinas
-                    </Text>
-                    {rutinas.map((rutina, index) => {
-                        return (
-                            <TouchableOpacity style={styles.card} onPress={() => navigation.navigate('Rutina', { rutina })}>
-                                <Text style={styles.texto_rutinas_derecha}>
-                                    <Image source={require('../assets/clock.png')} style={styles.clock} />
-                                    {rutina.DURACION}
-                                </Text>
-                                <Text style={styles.texto_rutinas}>
-                                    {`${rutina.NOMBRE}`}
-                                </Text>
-                            </TouchableOpacity>
-                        )
-                    })}
-                </ScrollView>
-            </ImageBackground>
+            <UserBadge />
+            <ScrollView style={styles.scrollView}>
+                <Text style={styles.titulo_rutinas}>
+                    Rutinas
+                </Text>
+                {rutinas.map((rutina, index) => {
+                    return (
+                        <TouchableOpacity style={styles.card} onPress={() => navigation.navigate('Rutina', { rutina })} key={rutina._id}>
+                            <Text style={styles.texto_rutinas}>
+                                {`${rutina.NOMBRE}`}
+                            </Text>
+                        </TouchableOpacity>
+                    )
+                })}
+            </ScrollView>
         </View>
     )
 }
@@ -84,7 +78,7 @@ const styles = StyleSheet.create({
         color: '#adfa1d',
         alignSelf: 'flex-end',
         justifyContent: 'flex-start',
-        
+
     },
     clock: {
         width: 20,

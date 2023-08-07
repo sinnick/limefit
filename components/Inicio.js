@@ -104,7 +104,7 @@ const Inicio = ({ navigation }) => {
             SUEÑO    →
           </Text>
         </TouchableOpacity> */}
-        <TouchableOpacity style={styles.card} onPress={() => navigation.navigate('Rutinas')}>
+        {/* <TouchableOpacity style={styles.card} onPress={() => navigation.navigate('Rutinas')}>
           <View style={styles.card_image_container}>
             <ImageBackground source={require('../assets/bg-metas.jpg')} style={styles.image_bg_cards}
               imageStyle={{ borderRadius: 20 }}
@@ -114,7 +114,7 @@ const Inicio = ({ navigation }) => {
           <Text style={styles.texto_rutinas}>
             METAS    →
           </Text>
-        </TouchableOpacity>
+        </TouchableOpacity> */}
       </ScrollView>
     </View>
   );

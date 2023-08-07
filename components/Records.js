@@ -16,7 +16,7 @@ const Records = ({ navigation }) => {
 
     return (
         <View style={styles.container}>
-            <ImageBackground source={require('../assets/chalk.jpg')} style={styles.background}>
+            {/* <ImageBackground source={require('../assets/chalk.jpg')} style={styles.background}> */}
                 <UserBadge />
                 <Text style={styles.titulo_Records}>
                     Personal Records
@@ -57,7 +57,7 @@ const Records = ({ navigation }) => {
                         )
                     })}
                 </ScrollView>
-            </ImageBackground>
+            {/* </ImageBackground> */}
         </View>
     )
 }
