@@ -1,5 +1,4 @@
 import LoginScreen from './components/LoginScreen';
-import Inicio from './components/Inicio';
 import Rutinas from './components/Rutinas';
 import Records from './components/Records';
 import Rutina from './components/Rutina';
@@ -34,7 +33,6 @@ export default function App() {
           // initialRouteName="Rutinas"
           >
           <Stack.Screen name="Login" component={LoginScreen} />
-          <Stack.Screen name="Inicio" component={Inicio} />
           <Stack.Screen name="Rutinas" component={Rutinas} />
           <Stack.Screen name="Records" component={Records} />
           <Stack.Screen name="Rutina" component={Rutina} />

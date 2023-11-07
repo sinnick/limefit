@@ -35,6 +35,8 @@ const styles = StyleSheet.create({
         width: '85%',
         marginHorizontal: 20,
         marginVertical: 10,
+        borderColor: '#000',
+        borderWidth: 5,
         borderRadius: 50,
     },
     imagePerfil: {
@@ -78,7 +80,7 @@ const styles = StyleSheet.create({
     },
     containerImagen: {
         borderWidth: 5,
-        marginLeft: -1,
+        marginLeft: -5,
         marginTop: -5,
         marginBottom: -5,
         borderRightColor: '#000',

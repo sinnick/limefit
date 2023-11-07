@@ -31,7 +31,7 @@ const LoginScreen = ({navigation}) => {
             setUser(usuario);
             
             
-            navigation.navigate('Inicio');
+            navigation.navigate('Rutinas');
         } catch (error) {
             console.error('error ', error);
         }
