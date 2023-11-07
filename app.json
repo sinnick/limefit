@@ -4,7 +4,7 @@
     "slug": "lime",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon3.png",
+    "icon": "./assets/logo_barbell.png",
     "userInterfaceStyle": "light",
     "splash": {
       "image": "./assets/splash.png",
@@ -19,13 +19,13 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/icon3.png",
+        "foregroundImage": "./assets/logo_barbell.png",
         "backgroundColor": "#101010"
       },
       "package": "com.sinnick007.lime"
     },
     "web": {
-      "favicon": "./assets/icon3.png"
+      "favicon": "./assets/logo_barbell.png"
     },
     "extra": {
       "eas": {
