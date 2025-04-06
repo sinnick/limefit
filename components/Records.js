@@ -1,141 +1,213 @@
 import { useState, useContext, useEffect } from 'react';
-import { View, StyleSheet, Text, ScrollView, TouchableOpacity, Image, ImageBackground, Modal } from 'react-native';
+import { View, StyleSheet, Text, FlatList, TouchableOpacity, Image } from 'react-native';
 import UserBadge from './UserBadge';
 import UserContext from '../context/UserContext';
 import RecordsContext from '../context/RecordsContext';
 import { URL_API } from '../config';
+import { COLORS, FONTS, SPACING, BORDER_RADIUS, SHADOWS } from '../styles/theme';
+import Button from './common/Button';
 
 const Records = ({ navigation }) => {
-    const { user, setUser } = useContext(UserContext);
+    const { user } = useContext(UserContext);
     const { records, setRecords } = useContext(RecordsContext);
-    const dni = user.DNI;
-    const [modalVisible, setModalVisible] = useState(false);
+    const [isLoading, setIsLoading] = useState(true);
+    const [refreshing, setRefreshing] = useState(false);
 
+    // Función para cargar los records
+    const getRecords = async () => {
+        setIsLoading(true);
+        try {
+            const respuesta = await fetch(`${URL_API}/records/list`, {
+                method: 'POST',
+                body: JSON.stringify({ dni: user.DNI }),
+            });
+            const json = await respuesta.json();
+            setRecords(json.result_records || []);
+        } catch (error) {
+            console.error('Error al cargar records:', error);
+        } finally {
+            setIsLoading(false);
+            setRefreshing(false);
+        }
+    };
 
-    console.log({ records });
+    const handleRefresh = () => {
+        setRefreshing(true);
+        getRecords();
+    };
+
+    useEffect(() => {
+        getRecords();
+    }, []);
+
+    // Componente para mostrar cuando no hay records
+    const EmptyRecordsList = () => (
+        <View style={styles.emptyContainer}>
+            <Image 
+                source={require('../assets/clock.png')} 
+                style={styles.emptyImage}
+            />
+            <Text style={styles.emptyTitle}>No hay records</Text>
+            <Text style={styles.emptyText}>
+                Agrega tu primer record personal para comenzar a registrar tu progreso
+            </Text>
+        </View>
+    );
+
+    // Renderizar cada item de la lista de records
+    const renderRecordItem = ({ item, index }) => (
+        <TouchableOpacity 
+            style={styles.recordCard}
+            activeOpacity={0.8}
+        >
+            <View style={styles.recordInfo}>
+                <Text style={styles.recordExercise}>{item.EJERCICIO}</Text>
+                <Text style={styles.recordWeight}>{item.PESO} kg</Text>
+            </View>
+            
+            <View style={styles.recordMeta}>
+                <View style={styles.recordDate}>
+                    <Image source={require('../assets/clock.png')} style={styles.dateIcon} />
+                    <Text style={styles.dateText}>{item.FECHA.substring(0, 10)}</Text>
+                </View>
+            </View>
+        </TouchableOpacity>
+    );
 
     return (
         <View style={styles.container}>
-            {/* <ImageBackground source={require('../assets/chalk.jpg')} style={styles.background}> */}
-                <UserBadge />
-                <Text style={styles.titulo_Records}>
-                    Personal Records
-                </Text>
-                <TouchableOpacity style={styles.nuevo_record} onclick={() => navigation.navigate('NuevoRecord')}>
-                    <Text style={{ fontSize: 30 }}>
-                        nuevo record
-                    </Text>
-                    {/*                     
-                    <Modal visible={modalVisible}>
-                        <View style={styles.modal_container}>
-                            <View style={styles.modal_detalles}>
-                                <Text style={styles.modal_detalles_titulo}>Instrucciones: </Text>
-                                <Text style={styles.modal_detalles_descripcion}>{ejercicio.instructions}</Text>
-                                <TouchableOpacity onPress={() => { setModalVisible(!modalVisible) }} style={styles.modal_boton_cerrar}>
-                                    <Text>
-                                        OK
-                                    </Text>
-                                </TouchableOpacity>
-                            </View>
-                        </View>
-                    </Modal> */}
-
-                </TouchableOpacity>
-                <ScrollView style={styles.scrollView}>
-                    {records.map((record, index) => {
-                        console.log({record});
-                        return (
-                            <TouchableOpacity style={styles.card}>
-                                <Text style={styles.texto_Records_derecha}>
-                                    <Image source={require('../assets/clock.png')} style={styles.clock} />
-                                    {record.FECHA.substring(0, 10)}
-                                </Text>
-                                <Text style={styles.texto_Records}>
-                                    {`${record.EJERCICIO}, ${record.PESO} kg`}
-                                </Text>
-                            </TouchableOpacity>
-                        )
-                    })}
-                </ScrollView>
-            {/* </ImageBackground> */}
+            <UserBadge onProfilePress={() => navigation.navigate('Profile')} />
+            
+            <View style={styles.headerContainer}>
+                <Text style={styles.headerTitle}>Mis Records</Text>
+                <Text style={styles.headerSubtitle}>Registra y sigue tu progreso</Text>
+            </View>
+            
+            <View style={styles.buttonContainer}>
+                <Button 
+                    title="Nuevo Record" 
+                    onPress={() => navigation.navigate('NuevoRecord')}
+                    icon={
+                        <Image 
+                            source={require('../assets/logo_barbell.png')} 
+                            style={styles.buttonIcon} 
+                        />
+                    }
+                />
+            </View>
+            
+            <FlatList
+                data={records}
+                keyExtractor={(item, index) => index.toString()}
+                renderItem={renderRecordItem}
+                contentContainerStyle={styles.listContainer}
+                ListEmptyComponent={EmptyRecordsList}
+                refreshing={refreshing}
+                onRefresh={handleRefresh}
+            />
         </View>
-    )
-}
-
+    );
+};
 
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        marginTop: 0,
-        alignItems: 'center',
-        justifyContent: 'flex-start',
-        backgroundColor: '#101010',
+        backgroundColor: COLORS.background,
     },
-    titulo_Records: {
-        color: '#fff',
-        alignSelf: 'flex-start',
-        fontSize: 30,
-        marginLeft: 50,
-        marginTop: 20,
+    headerContainer: {
+        paddingHorizontal: SPACING.l,
+        marginBottom: SPACING.m,
     },
-    card: {
-        textAlign: 'center',
-        backgroundColor: '#121212',
-        width: '100%',
-        height: 70,
-        alignSelf: 'center',
-        minWidth: 200,
-        marginVertical: 8,
-        paddingHorizontal: 20,
-        // paddingVertical: 10,
-        borderRadius: 8,
-        borderColor: '#fff',
-        borderWidth: .5,
-        alignContent: 'center',
-        alignItems: 'center',
-        justifyContent: 'center',
+    headerTitle: {
+        ...FONTS.title,
+        color: COLORS.text,
     },
-    scrollView: {
-        flex: 1,
-        width: '85%',
-        alignContent: 'center',
+    headerSubtitle: {
+        ...FONTS.caption,
+        color: COLORS.textSecondary,
     },
-    texto_Records: {
-        fontSize: 20,
-        color: '#adfa1d',
-        alignSelf: 'flex-start',
-        position: 'absolute',
-        left: 20,
+    buttonContainer: {
+        paddingHorizontal: SPACING.l,
+        marginBottom: SPACING.l,
     },
-    texto_Records_derecha: {
-        color: '#adfa1d',
-        alignSelf: 'flex-end',
-        justifyContent: 'flex-start',
-        alignItems: 'center',
-        position: 'absolute',
-        right: 20,
-    },
-    clock: {
+    buttonIcon: {
         width: 20,
         height: 20,
-        resizeMode: 'contain',
-        tintColor: '#fff',
+        tintColor: COLORS.secondary,
     },
-    background: {
-        flex: 1,
-        width: '100%',
-        height: '100%',
-        resizeMode: 'cover',
-        justifyContent: 'center',
+    listContainer: {
+        padding: SPACING.m,
+        paddingBottom: SPACING.xxl,
+    },
+    recordCard: {
+        backgroundColor: COLORS.card,
+        borderRadius: BORDER_RADIUS.m,
+        padding: SPACING.m,
+        marginBottom: SPACING.m,
+        borderLeftWidth: 4,
+        borderLeftColor: '#adfa1d',
+        ...SHADOWS.small,
+    },
+    recordInfo: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: SPACING.s,
+    },
+    recordExercise: {
+        ...FONTS.h2,
+        fontWeight: 'bold',
+        color: '#333333',
+        fontSize: 18,
+    },
+    recordWeight: {
+        ...FONTS.h2,
+        color: '#333333',
+        fontWeight: 'bold',
+        fontSize: 20,
+    },
+    recordMeta: {
+        flexDirection: 'row',
+        justifyContent: 'flex-end',
+    },
+    recordDate: {
+        flexDirection: 'row',
         alignItems: 'center',
     },
-    nuevo_record: {
-        backgroundColor: '#adfa1d',
-        padding: 5,
-        fontSize: 20,
-        borderRadius: 5,
-        marginTop: 20,
+    dateIcon: {
+        width: 16,
+        height: 16,
+        tintColor: COLORS.textSecondary,
+        marginRight: SPACING.xs,
     },
-})
+    dateText: {
+        ...FONTS.caption,
+        color: COLORS.textSecondary,
+    },
+    emptyContainer: {
+        flex: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: SPACING.xl,
+        marginTop: SPACING.xl,
+    },
+    emptyImage: {
+        width: 64,
+        height: 64,
+        tintColor: COLORS.textSecondary,
+        opacity: 0.5,
+        marginBottom: SPACING.l,
+    },
+    emptyTitle: {
+        ...FONTS.subtitle,
+        color: COLORS.text,
+        marginBottom: SPACING.s,
+    },
+    emptyText: {
+        ...FONTS.body,
+        color: COLORS.textSecondary,
+        textAlign: 'center',
+    },
+});
 
-export default Records
+export default Records;

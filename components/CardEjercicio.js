@@ -1,173 +1,410 @@
-import { useState } from 'react'
-import {Text, View, StyleSheet, Modal, Image, TouchableOpacity, ScrollView, Alert, Button} from 'react-native'
+import { useState } from 'react';
+import { Text, View, StyleSheet, Modal, Image, TouchableOpacity, ScrollView } from 'react-native';
 import Checkbox from 'expo-checkbox';
+import { COLORS, FONTS, SPACING, BORDER_RADIUS, SHADOWS } from '../styles/theme';
+import Button from './common/Button';
 
-const CardEjercicio = ({ejercicio, index}) => {
- 
-    let [checked, setChecked] = useState(false);
+const CardEjercicio = ({ ejercicio, index, isCompleted, onToggleComplete }) => {
     const [modalVisible, setModalVisible] = useState(false);
-    return(
-        <TouchableOpacity style={styles.card_ejercicio} key={index}>
-            <View style={{width: '70%'}}>
-                <Text style={styles.ejercicio_nombre}>
-                    {ejercicio.name}
-                </Text>
-                <Text style={styles.ejercicio_sets}>
-                    Sets: {ejercicio.sets}  reps: {ejercicio.reps}
-                </Text>
-                <Modal visible={modalVisible}>
-                    <View style={styles.modal_container}>
-                        <View style={styles.modal_detalles}>
-                            <Text style={styles.modal_detalles_titulo}>Instrucciones: </Text>
-                            <Text style={styles.modal_detalles_descripcion}>{ejercicio.instructions}</Text>
-                            <TouchableOpacity onPress={() => { setModalVisible(!modalVisible) }} style={styles.modal_boton_cerrar}>
-                                <Text>
-                                    OK
-                                </Text>
-                            </TouchableOpacity>
+    
+    // Usar el estado controlado por el componente padre en lugar del local
+    const checked = isCompleted || false;
+    const setChecked = (value) => {
+        if (onToggleComplete) {
+            onToggleComplete(value);
+        }
+    };
+
+    // Función para traducir el tipo de ejercicio
+    const getTipoEjercicio = (tipo) => {
+        const tipos = {
+            'strength': 'Fuerza',
+            'cardio': 'Cardio',
+            'flexibility': 'Flexibilidad',
+            'balance': 'Equilibrio'
+        };
+        return tipos[tipo] || tipo;
+    };
+
+    // Función para traducir el músculo trabajado
+    const getMusculo = (musculo) => {
+        const musculos = {
+            'chest': 'Pecho',
+            'back': 'Espalda',
+            'legs': 'Piernas',
+            'shoulders': 'Hombros',
+            'arms': 'Brazos',
+            'abs': 'Abdominales',
+            'biceps': 'Bíceps',
+            'triceps': 'Tríceps',
+            'forearms': 'Antebrazos',
+            'calves': 'Pantorrillas'
+        };
+        return musculos[musculo] || musculo;
+    };
+
+    // Función para traducir la dificultad
+    const getDificultad = (dificultad) => {
+        const dificultades = {
+            'beginner': 'Principiante',
+            'intermediate': 'Intermedio',
+            'advanced': 'Avanzado'
+        };
+        return dificultades[dificultad] || dificultad;
+    };
+
+    return (
+        <View style={styles.cardContainer}>
+            <View style={[styles.card, checked && styles.cardCompleted]}>
+                <View style={styles.cardContent}>
+                    <View style={styles.exerciseInfo}>
+                        <Text style={styles.exerciseName} numberOfLines={1}>
+                            {ejercicio.name}
+                        </Text>
+                        
+                        <View style={styles.detailsRow}>
+                            <Text style={styles.exerciseDetails}>
+                                {`${ejercicio.sets} series × ${ejercicio.reps} reps`}
+                            </Text>
+                            
+                            <View style={styles.tagsContainer}>
+                                {ejercicio.muscle && (
+                                    <View style={styles.tagContainer}>
+                                        <Text style={styles.tagText}>{getMusculo(ejercicio.muscle)}</Text>
+                                    </View>
+                                )}
+                                
+                                {ejercicio.difficulty && (
+                                    <View style={[
+                                        styles.tagContainer, 
+                                        ejercicio.difficulty === 'beginner' ? styles.beginnerTag :
+                                        ejercicio.difficulty === 'intermediate' ? styles.intermediateTag : 
+                                        styles.advancedTag
+                                    ]}>
+                                        <Text style={[
+                                            styles.tagText,
+                                            ejercicio.difficulty !== 'beginner' && styles.darkTagText
+                                        ]}>
+                                            {getDificultad(ejercicio.difficulty)}
+                                        </Text>
+                                    </View>
+                                )}
+                                
+                                {ejercicio.equipment && (
+                                    <View style={[styles.tagContainer, styles.equipmentTag]}>
+                                        <Text style={styles.tagText}>
+                                            {ejercicio.equipment.replace('_', ' ')}
+                                        </Text>
+                                    </View>
+                                )}
+                            </View>
                         </View>
                     </View>
-                </Modal>
-            </View>
-            <TouchableOpacity style={styles.boton_derecha} onPress={() => {setModalVisible(!modalVisible)}}>
-                <Image source={require('../assets/help.png')} style={[styles.icon, {width: 30, height: 30}]} />
-            </TouchableOpacity>
-            <View style={[styles.boton_derecha, {borderTopRightRadius: 8, borderBottomRightRadius: 8}]}>
-                <Checkbox
-                    value={checked}
-                    onValueChange={() => {
-                        console.log('checked', checked);
-                        setChecked(!checked)
-                    }}
-                    style={checked ? styles.checkbox_checked : styles.checkbox_unchecked}
-                    color={checked ? '#adfa1dcc' : '#fff' }
-                />
-            </View>
-        </TouchableOpacity>
-    )
 
-}
+                    <View style={styles.actionsContainer}>
+                        <TouchableOpacity 
+                            style={styles.infoButton} 
+                            onPress={() => setModalVisible(true)}
+                        >
+                            <Image 
+                                source={require('../assets/help.png')} 
+                                style={styles.infoIcon} 
+                            />
+                        </TouchableOpacity>
 
+                        <TouchableOpacity 
+                            style={styles.checkboxContainer}
+                            onPress={() => setChecked(!checked)}
+                        >
+                            <Checkbox
+                                value={checked}
+                                onValueChange={setChecked}
+                                style={styles.checkbox}
+                                color={checked ? '#adfa1d' : COLORS.darkGray}
+                            />
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </View>
+
+            <Modal
+                visible={modalVisible}
+                animationType="fade"
+                transparent={true}
+                onRequestClose={() => setModalVisible(false)}
+            >
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalContainer}>
+                        <View style={styles.modalHeader}>
+                            <Text style={styles.modalTitle}>{ejercicio.name}</Text>
+                            <TouchableOpacity 
+                                style={styles.closeButton}
+                                onPress={() => setModalVisible(false)}
+                            >
+                                <Text style={styles.closeButtonText}>×</Text>
+                            </TouchableOpacity>
+                        </View>
+
+                        <ScrollView style={styles.modalBody}>
+                            <View style={styles.infoGrid}>
+                                {ejercicio.muscle && (
+                                    <View style={styles.infoGridItem}>
+                                        <Text style={styles.infoGridLabel}>Músculo:</Text>
+                                        <Text style={styles.infoGridValue}>{getMusculo(ejercicio.muscle)}</Text>
+                                    </View>
+                                )}
+                                
+                                {ejercicio.type && (
+                                    <View style={styles.infoGridItem}>
+                                        <Text style={styles.infoGridLabel}>Tipo:</Text>
+                                        <Text style={styles.infoGridValue}>{getTipoEjercicio(ejercicio.type)}</Text>
+                                    </View>
+                                )}
+                                
+                                {ejercicio.difficulty && (
+                                    <View style={styles.infoGridItem}>
+                                        <Text style={styles.infoGridLabel}>Dificultad:</Text>
+                                        <Text style={styles.infoGridValue}>{getDificultad(ejercicio.difficulty)}</Text>
+                                    </View>
+                                )}
+                                
+                                {ejercicio.equipment && (
+                                    <View style={styles.infoGridItem}>
+                                        <Text style={styles.infoGridLabel}>Equipo:</Text>
+                                        <Text style={styles.infoGridValue}>{ejercicio.equipment.replace('_', ' ')}</Text>
+                                    </View>
+                                )}
+                            </View>
+                            
+                            <View style={styles.modalSection}>
+                                <Text style={styles.modalSectionTitle}>Series × Repeticiones:</Text>
+                                <View style={styles.setsInfoContainer}>
+                                    <Text style={styles.setsInfoText}>{ejercicio.sets} series</Text>
+                                    <Text style={styles.setsInfoSeparator}>×</Text>
+                                    <Text style={styles.setsInfoText}>{ejercicio.reps} repeticiones</Text>
+                                </View>
+                            </View>
+
+                            <View style={styles.modalSection}>
+                                <Text style={styles.modalSectionTitle}>Instrucciones:</Text>
+                                <Text style={styles.modalText}>{ejercicio.instructions}</Text>
+                            </View>
+                        </ScrollView>
+
+                        <View style={styles.modalFooter}>
+                            <Button 
+                                title="Entendido" 
+                                onPress={() => setModalVisible(false)}
+                                variant="primary"
+                            />
+                        </View>
+                    </View>
+                </View>
+            </Modal>
+        </View>
+    );
+};
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        alignItems: 'center',
-        justifyContent: 'flex-start',
-        backgroundColor: '#101010',
-    },
-    scrollView: {
-        flex: 1,
-        width: '85%',
-        alignContent: 'center',
-    },
-    card_ejercicio: {
-        flexDirection: 'row',
-        textAlign: 'center',
-        backgroundColor: '#121212',
+    cardContainer: {
+        marginVertical: SPACING.s,
         width: '100%',
-        height: 70,
-        alignSelf: 'center',
-        minWidth: 200,
-        marginVertical: 8,
-        paddingHorizontal: 20,
-        paddingRight: 0,
-        borderRadius: 8,
-        borderColor: '#fff',
-        borderWidth: .5,
-        alignContent: 'center',
-        alignItems: 'center',
-        justifyContent: 'center',
     },
-    rutina_nombre: {
-        color: '#fff',
-        alignSelf: 'flex-start',
-        fontSize: 30,
+    card: {
+        backgroundColor: COLORS.card,
+        borderRadius: BORDER_RADIUS.m,
+        borderLeftWidth: 4,
+        borderLeftColor: '#adfa1d',
+        ...SHADOWS.small,
     },
-    rutina_duracion: {
-        color: '#fff',
-        alignSelf: 'center',
-        fontSize: 20,
+    cardCompleted: {
+        opacity: 0.7,
+        borderLeftColor: COLORS.success,
     },
-    icon: {
-        resizeMode: 'contain',
-        tintColor: '#fff',
-    },
-    ejercicio_nombre: {
-        color: '#fff',
-        alignSelf: 'flex-start',
-        fontSize: 20,
-    },
-    ejercicio_sets: {
-        color: '#fff',
-        alignSelf: 'flex-start',
-        fontSize: 15,
-    },
-    boton_derecha: {
-        width: '15%',
-        // backgroundColor: '#ccc',
-        height: '100%',
-        alignContent: 'center',
-        justifyContent: 'center',
+    cardContent: {
+        flexDirection: 'row',
+        padding: SPACING.m,
         alignItems: 'center',
     },
-    checkbox_checked: {
-        width: 30,
-        height: 30,
-        justifyContent: 'center',
-        alignItems: 'center',
-        borderRadius: 2,
-        borderWidth: 2,
-        color: 'red',
-    },
-    checkbox_unchecked: {
-        width: 30,
-        height: 30,
-        justifyContent: 'center',
-        alignItems: 'center',
-        borderRadius: 4,
-        borderWidth: 2,
-    },
-    modal_container: {
+    exerciseInfo: {
         flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        backgroundColor: '#101010',
-        
+        marginRight: SPACING.s,
     },
-    modal_detalles: {
-        width: '90%',
-        color: '#101010',
-        backgroundColor: '#adfa1dcc',
-        padding: 12,
-        alignSelf: 'center',
-        borderRadius: 8,
-        justifyContent: 'center',
-    },
-    modal_detalles_titulo: {
-        color: '#101010',
-        fontSize: 20,
+    exerciseName: {
+        ...FONTS.h2,
         fontWeight: 'bold',
-        marginBottom: 10,
+        color: '#eeeeee',
+        marginBottom: SPACING.xs,
+        fontSize: 18,
     },
-    modal_detalles_descripcion: {
-        color: '#101010',
-        fontSize: 15,
+    exerciseDetails: {
+        ...FONTS.body,
+        color: '#888888',
+        letterSpacing: 0.3,
     },
-    modal_boton_cerrar: {
-        marginTop: 20,
-        alignSelf: 'flex-end',
-        borderWidth: 2,
-        borderRadius: 8,
-        width: 50,
-        alignContent: 'center',
+    detailsRow: {
+        flexDirection: 'row',
         alignItems: 'center',
+        flexWrap: 'wrap',
+        marginTop: SPACING.xs,
+    },
+    tagsContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        flexWrap: 'wrap',
+        marginLeft: SPACING.s,
+    },
+    tagContainer: {
+        backgroundColor: '#adfa1d',
+        borderRadius: BORDER_RADIUS.s,
+        paddingHorizontal: SPACING.xs,
+        paddingVertical: 2,
+        marginLeft: SPACING.xs,
+    },
+    tagText: {
+        ...FONTS.caption,
+        color: '#333333',
+        fontWeight: '600',
+        fontSize: 10,
+    },
+    beginnerTag: {
+        backgroundColor: '#adfa1d',
+    },
+    intermediateTag: {
+        backgroundColor: '#f0ad4e',
+    },
+    advancedTag: {
+        backgroundColor: '#d9534f',
+    },
+    darkTagText: {
+        color: '#ffffff',
+    },
+    equipmentTag: {
+        backgroundColor: '#5bc0de',
+    },
+    difficultyTag: {
+        backgroundColor: COLORS.darkGray,
+    },
+    actionsContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    infoButton: {
+        padding: SPACING.s,
+        marginRight: SPACING.s,
+    },
+    infoIcon: {
+        width: 24,
+        height: 24,
+        tintColor: COLORS.textSecondary,
+    },
+    checkboxContainer: {
+        padding: SPACING.xs,
+    },
+    checkbox: {
+        width: 24,
+        height: 24,
+        borderRadius: BORDER_RADIUS.s,
+        borderWidth: 2,
+        borderColor: COLORS.darkGray,
+    },
+    
+    // Modal styles
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0, 0, 0, 0.7)',
         justifyContent: 'center',
-        color: '#101010',
-        fontSize: 15,
-        padding: 8,
-    }
-        
-})
-
-export default CardEjercicio
+        alignItems: 'center',
+        padding: SPACING.l,
+    },
+    modalContainer: {
+        backgroundColor: COLORS.background,
+        borderRadius: BORDER_RADIUS.l,
+        width: '90%',
+        maxHeight: '80%',
+        ...SHADOWS.large,
+    },
+    modalHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        padding: SPACING.m,
+        borderBottomWidth: 1,
+        borderBottomColor: COLORS.darkGray,
+    },
+    modalTitle: {
+        ...FONTS.subtitle,
+        color: COLORS.primary,
+        flex: 1,
+    },
+    closeButton: {
+        width: 32,
+        height: 32,
+        borderRadius: BORDER_RADIUS.circle,
+        backgroundColor: COLORS.darkGray,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    closeButtonText: {
+        color: COLORS.text,
+        fontSize: 24,
+        fontWeight: 'bold',
+        lineHeight: 28,
+    },
+    modalBody: {
+        padding: SPACING.m,
+        maxHeight: 400,
+    },
+    modalSectionTitle: {
+        ...FONTS.subtitle,
+        color: COLORS.text,
+        marginBottom: SPACING.s,
+    },
+    modalText: {
+        ...FONTS.body,
+        color: COLORS.textSecondary,
+        lineHeight: 22,
+    },
+    modalFooter: {
+        padding: SPACING.m,
+        borderTopWidth: 1,
+        borderTopColor: COLORS.darkGray,
+        alignItems: 'center',
+    },
+    infoGrid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        marginBottom: SPACING.m,
+    },
+    infoGridItem: {
+        width: '50%',
+        marginBottom: SPACING.s,
+    },
+    infoGridLabel: {
+        ...FONTS.caption,
+        color: COLORS.textSecondary,
+        fontWeight: '600',
+    },
+    infoGridValue: {
+        ...FONTS.body,
+        color: COLORS.text,
+    },
+    modalSection: {
+        marginBottom: SPACING.m,
+    },
+    setsInfoContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    setsInfoText: {
+        ...FONTS.body,
+        color: COLORS.text,
+        fontWeight: '600',
+    },
+    setsInfoSeparator: {
+        ...FONTS.body,
+        color: COLORS.text,
+        marginHorizontal: SPACING.xs,
+    },
+});
+export default CardEjercicio;

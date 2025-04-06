@@ -1,89 +1,90 @@
-import { View, Text, Image, StyleSheet } from "react-native"
-import { useContext } from "react"
-import UserContext from "../context/UserContext"
+import { View, Text, Image, StyleSheet, TouchableOpacity } from "react-native";
+import { useContext } from "react";
+import UserContext from "../context/UserContext";
+import { COLORS, FONTS, SPACING, BORDER_RADIUS, SHADOWS } from '../styles/theme';
+import { MaterialIcons } from '@expo/vector-icons';
 
-const UserBadge = () => {
-    const { user, setUser } = useContext(UserContext)
-    console.log('UserBadge', { user });
-    return (
-        <View style={styles.cardUsuario}>
-            <View style={styles.containerImagen}>
-                <Image
-                    source={user.FOTO ? { uri: user.FOTO } : require('../assets/clock.png')}
-                    style={styles.imagePerfil} />
-            </View>
-            <View style={styles.view_texto_usuario}>
-                <Text style={styles.texto_usuario} >
-                    {user.SEXO == 'M' ? 'Bienvenida, ' : 'Bienvenido, '}
-                    {user.NOMBRE || 'Nombre Generico'}
-                </Text>
-            </View>
-        </View>
-    )
-}
+const UserBadge = ({ onProfilePress }) => {
+	const { user } = useContext(UserContext);
 
-export default UserBadge
+	return (
+		<View style={styles.container}>
+			<TouchableOpacity 
+				style={styles.profileContainer} 
+				onPress={onProfilePress}
+				activeOpacity={0.8}
+			>
+				<Image
+					source={user.FOTO ? { uri: user.FOTO } : require('../assets/logo_barbell.png')}
+					style={styles.imagePerfil}
+				/>
+			</TouchableOpacity>
+
+			<View style={styles.textContainer}>
+				<Text style={styles.greeting}>Hola, buen día</Text>
+				<Text style={styles.userName}>{user.NOMBRE || 'Usuario'}</Text>
+			</View>
+
+			<View style={styles.iconsContainer}>
+				<TouchableOpacity style={styles.iconButton}>
+					<MaterialIcons name="calendar-today" size={22} color="#333333" />
+				</TouchableOpacity>
+				<TouchableOpacity style={styles.iconButton}>
+					<MaterialIcons name="notifications-none" size={22} color="#333333" />
+				</TouchableOpacity>
+			</View>
+		</View>
+	);
+};
 
 const styles = StyleSheet.create({
-    cardUsuario: {
-        marginTop: 65,
-        flexDirection: 'row',
-        justifyContent: 'flex-start',
-        alignItems: 'center',
-        backgroundColor: '#adfa1d',
-        height: 40,
-        width: '85%',
-        marginHorizontal: 20,
-        marginVertical: 10,
-        borderColor: '#000',
-        borderWidth: 5,
-        borderRadius: 50,
-    },
-    imagePerfil: {
-        borderRadius: 100,
-        width: 40,
-        height: '100%',
-        backgroundColor: '#ccc',
-        resizeMode: 'contain',
-    },
-    dividerImagen: {
-        height: '100%',
-        width: 5,
-        color: '#000',
-        backgroundColor: '#000',
-        margin: 0
-    },
-    view_texto_usuario: {
-        justifyContent: 'center',
-        alignContent: 'center',
-        alignItems: 'center',
-        height: '90%',
-        width: '100%',
-    },
-    texto_usuario: {
-        color: '#000',
-        fontSize: 18,
-        fontWeight: 'bold',
-        alignSelf: 'center',
-        textAlign: 'center',
-        justifyContent: 'center',
-        width: '100%',
-        marginRight: 50,
-    },
-    texto_usuario_detalles: {
-        marginVertical: 5,
-        color: '#000',
-        marginLeft: 10,
-        alignSelf: 'flex-start',
-        textAlign: 'left',
-        width: '65%',
-    },
-    containerImagen: {
-        borderWidth: 5,
-        marginLeft: -5,
-        marginTop: -5,
-        marginBottom: -5,
-        borderRightColor: '#000',
-        borderRadius: 100,
-    }
-})
+	container: {
+		flexDirection: 'row',
+		alignItems: 'center',
+		justifyContent: 'space-between',
+		padding: SPACING.l,
+		marginTop: SPACING.xl,
+		marginBottom: SPACING.m,
+		borderBottomWidth: 1,
+		borderBottomColor: 'rgba(255,255,255,0.1)',
+		paddingBottom: SPACING.m,
+	},
+	profileContainer: {
+		borderRadius: BORDER_RADIUS.circle,
+		overflow: 'hidden',
+		...SHADOWS.small,
+	},
+	imagePerfil: {
+		width: 50,
+		height: 50,
+		borderRadius: BORDER_RADIUS.circle,
+		backgroundColor: '#adfa1d',
+	},
+	textContainer: {
+		flex: 1,
+		marginLeft: SPACING.m,
+	},
+	greeting: {
+		...FONTS.caption,
+		color: COLORS.textSecondary,
+		fontSize: 12,
+	},
+	userName: {
+		...FONTS.h2,
+		color: COLORS.text,
+		fontWeight: 'bold',
+	},
+	iconsContainer: {
+		flexDirection: 'row',
+		alignItems: 'center',
+	},
+	iconButton: {
+		marginLeft: SPACING.s,
+		backgroundColor: '#adfa1d',
+		padding: SPACING.xs,
+		borderRadius: BORDER_RADIUS.circle,
+		...SHADOWS.small,
+	},
+});
+
+export default UserBadge;

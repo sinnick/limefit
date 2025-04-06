@@ -9,7 +9,7 @@
       "android": {
         "buildType": "apk",
         "gradleCommand": ":app:assembleRelease",
-        "developmentClient": true
+        "developmentClient": false
       }
     },
     "production": {}

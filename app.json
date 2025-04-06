@@ -15,7 +15,8 @@
       "**/*"
     ],
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.sinnick007.lime"
     },
     "android": {
       "adaptiveIcon": {
@@ -31,6 +32,9 @@
       "eas": {
         "projectId": "952766c2-eb33-4982-b285-1f34d456876e"
       }
-    }
+    },
+    "plugins": [
+      "expo-font"
+    ]
   }
 }
