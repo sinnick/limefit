@@ -1,0 +1,10 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom utilities para LimeFit */
+@layer utilities {
+  .text-shadow-lime {
+    text-shadow: 0 0 10px rgba(196, 241, 53, 0.5);
+  }
+}
