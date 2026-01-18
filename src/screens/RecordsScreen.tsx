@@ -1,15 +1,15 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
   RefreshControl,
+  Animated,
 } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import Animated, { FadeInRight, FadeIn } from 'react-native-reanimated';
 import { colors, fontFamily, shadows } from '../constants/theme';
 import { RootStackParamList, Record } from '../types';
 import { useRecordsQuery } from '../services/queries';
@@ -28,6 +28,25 @@ interface RecordCardProps {
 }
 
 const RecordCard: React.FC<RecordCardProps> = ({ record, index }) => {
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const translateX = useRef(new Animated.Value(50)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 300,
+        delay: index * 50,
+        useNativeDriver: true,
+      }),
+      Animated.spring(translateX, {
+        toValue: 0,
+        delay: index * 50,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [index, fadeAnim, translateX]);
+
   const formattedDate = new Date(record.fecha).toLocaleDateString('es-ES', {
     day: 'numeric',
     month: 'short',
@@ -35,7 +54,7 @@ const RecordCard: React.FC<RecordCardProps> = ({ record, index }) => {
   });
 
   return (
-    <Animated.View entering={FadeInRight.delay(index * 50).springify()}>
+    <Animated.View style={{ opacity: fadeAnim, transform: [{ translateX }] }}>
       <Card variant="elevated" padding="lg" style={styles.recordCard}>
         <View style={styles.cardHeader}>
           <View style={styles.trophyContainer}>
@@ -84,7 +103,20 @@ export const RecordsScreen: React.FC<RecordsScreenProps> = ({ navigation }) => {
   const records = useRecords();
   const { isLoading, refetch, isRefetching } = useRecordsQuery(user?.DNI || '');
 
+  const statsAnim = useRef(new Animated.Value(0)).current;
+
   const [filterBy, setFilterBy] = useState<'all' | 'recent'>('all');
+
+  useEffect(() => {
+    if (!isLoading) {
+      Animated.timing(statsAnim, {
+        toValue: 1,
+        duration: 400,
+        delay: 100,
+        useNativeDriver: true,
+      }).start();
+    }
+  }, [isLoading, statsAnim]);
 
   // Agrupar records por ejercicio y obtener el mejor
   const bestRecords = useMemo(() => {
@@ -133,7 +165,7 @@ export const RecordsScreen: React.FC<RecordsScreenProps> = ({ navigation }) => {
       </TouchableOpacity>
 
       {/* Stats Summary */}
-      <Animated.View entering={FadeIn.delay(100)} style={styles.statsContainer}>
+      <Animated.View style={[styles.statsContainer, { opacity: statsAnim }]}>
         <View style={styles.statsRow}>
           <View style={styles.statBox}>
             <Ionicons name="trophy" size={24} color="#FFD700" />

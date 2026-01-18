@@ -1,12 +1,5 @@
-import React, { useEffect, createContext, useContext, useState, useCallback } from 'react';
-import { View, Text, ViewStyle, TextStyle, Dimensions } from 'react-native';
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withSpring,
-  withTiming,
-  runOnJS,
-} from 'react-native-reanimated';
+import React, { useEffect, createContext, useContext, useState, useCallback, useRef } from 'react';
+import { View, Text, ViewStyle, TextStyle, Dimensions, Animated } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, fontFamily, shadows } from '../../constants/theme';
 import { useHaptics } from '../../hooks/useHaptics';
@@ -47,29 +40,51 @@ interface ToastProps {
 }
 
 const Toast: React.FC<ToastProps> = ({ config, onHide }) => {
-  const translateY = useSharedValue(-100);
-  const opacity = useSharedValue(0);
+  const translateY = useRef(new Animated.Value(-100)).current;
+  const opacity = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     if (config) {
-      translateY.value = withSpring(0, { damping: 15, stiffness: 150 });
-      opacity.value = withTiming(1, { duration: 200 });
+      // Animate in
+      Animated.parallel([
+        Animated.spring(translateY, {
+          toValue: 0,
+          damping: 15,
+          stiffness: 150,
+          useNativeDriver: true,
+        }),
+        Animated.timing(opacity, {
+          toValue: 1,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+      ]).start();
 
       const timer = setTimeout(() => {
-        translateY.value = withTiming(-100, { duration: 300 });
-        opacity.value = withTiming(0, { duration: 300 }, () => {
-          runOnJS(onHide)();
+        // Animate out
+        Animated.parallel([
+          Animated.timing(translateY, {
+            toValue: -100,
+            duration: 300,
+            useNativeDriver: true,
+          }),
+          Animated.timing(opacity, {
+            toValue: 0,
+            duration: 300,
+            useNativeDriver: true,
+          }),
+        ]).start(() => {
+          onHide();
         });
       }, config.duration || 3000);
 
       return () => clearTimeout(timer);
+    } else {
+      // Reset values when config is null
+      translateY.setValue(-100);
+      opacity.setValue(0);
     }
-  }, [config]);
-
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: translateY.value }],
-    opacity: opacity.value,
-  }));
+  }, [config, onHide, translateY, opacity]);
 
   if (!config) return null;
 
@@ -112,7 +127,7 @@ const Toast: React.FC<ToastProps> = ({ config, onHide }) => {
   };
 
   return (
-    <Animated.View style={[containerStyle, animatedStyle]}>
+    <Animated.View style={[containerStyle, { transform: [{ translateY }], opacity }]}>
       <View style={iconContainerStyle}>
         <Ionicons name={icon} size={28} color={color} />
       </View>

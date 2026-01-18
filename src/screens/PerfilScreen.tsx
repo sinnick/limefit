@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -6,10 +6,10 @@ import {
   TouchableOpacity,
   ScrollView,
   Image,
+  Animated,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import Animated, { FadeInDown } from 'react-native-reanimated';
 import { colors, fontFamily, shadows } from '../constants/theme';
 import { RootStackParamList } from '../types';
 import { useUser, useUserStore, useSettings } from '../store/userStore';
@@ -54,6 +54,38 @@ const SettingItem: React.FC<SettingItemProps> = ({
   </TouchableOpacity>
 );
 
+interface AnimatedSectionProps {
+  children: React.ReactNode;
+  delay: number;
+}
+
+const AnimatedSection: React.FC<AnimatedSectionProps> = ({ children, delay }) => {
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const translateY = useRef(new Animated.Value(20)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 400,
+        delay,
+        useNativeDriver: true,
+      }),
+      Animated.spring(translateY, {
+        toValue: 0,
+        delay,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [delay, fadeAnim, translateY]);
+
+  return (
+    <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY }] }}>
+      {children}
+    </Animated.View>
+  );
+};
+
 export const PerfilScreen: React.FC<PerfilScreenProps> = ({ navigation }) => {
   const user = useUser();
   const logout = useUserStore((state) => state.logout);
@@ -87,42 +119,46 @@ export const PerfilScreen: React.FC<PerfilScreenProps> = ({ navigation }) => {
         showsVerticalScrollIndicator={false}
       >
         {/* Profile Header */}
-        <Animated.View entering={FadeInDown.delay(100)} style={styles.profileHeader}>
-          <View style={styles.avatarContainer}>
-            {user?.FOTO ? (
-              <Image source={{ uri: user.FOTO }} style={styles.avatar} />
-            ) : (
-              <Text style={styles.avatarText}>{getInitials()}</Text>
-            )}
+        <AnimatedSection delay={100}>
+          <View style={styles.profileHeader}>
+            <View style={styles.avatarContainer}>
+              {user?.FOTO ? (
+                <Image source={{ uri: user.FOTO }} style={styles.avatar} />
+              ) : (
+                <Text style={styles.avatarText}>{getInitials()}</Text>
+              )}
+            </View>
+            <Text style={styles.userName}>{user?.NAME || 'Usuario'}</Text>
+            <Text style={styles.userDni}>DNI: {user?.DNI}</Text>
           </View>
-          <Text style={styles.userName}>{user?.NAME || 'Usuario'}</Text>
-          <Text style={styles.userDni}>DNI: {user?.DNI}</Text>
-        </Animated.View>
+        </AnimatedSection>
 
         {/* Stats */}
-        <Animated.View entering={FadeInDown.delay(200)} style={styles.statsContainer}>
-          <View style={styles.statsGrid}>
-            <View style={styles.statBox}>
-              <Text style={styles.statValue}>{totalWorkouts}</Text>
-              <Text style={styles.statLabel}>Entrenamientos</Text>
-            </View>
-            <View style={styles.statBox}>
-              <Text style={styles.statValue}>{(totalVolumen / 1000).toFixed(0)}k</Text>
-              <Text style={styles.statLabel}>Kg Totales</Text>
-            </View>
-            <View style={styles.statBox}>
-              <Text style={styles.statValue}>{Math.round(totalTiempo / 60)}h</Text>
-              <Text style={styles.statLabel}>Horas</Text>
-            </View>
-            <View style={styles.statBox}>
-              <Text style={[styles.statValue, { color: colors.lime }]}>{totalPRs}</Text>
-              <Text style={styles.statLabel}>PRs</Text>
+        <AnimatedSection delay={200}>
+          <View style={styles.statsContainer}>
+            <View style={styles.statsGrid}>
+              <View style={styles.statBox}>
+                <Text style={styles.statValue}>{totalWorkouts}</Text>
+                <Text style={styles.statLabel}>Entrenamientos</Text>
+              </View>
+              <View style={styles.statBox}>
+                <Text style={styles.statValue}>{(totalVolumen / 1000).toFixed(0)}k</Text>
+                <Text style={styles.statLabel}>Kg Totales</Text>
+              </View>
+              <View style={styles.statBox}>
+                <Text style={styles.statValue}>{Math.round(totalTiempo / 60)}h</Text>
+                <Text style={styles.statLabel}>Horas</Text>
+              </View>
+              <View style={styles.statBox}>
+                <Text style={[styles.statValue, { color: colors.lime }]}>{totalPRs}</Text>
+                <Text style={styles.statLabel}>PRs</Text>
+              </View>
             </View>
           </View>
-        </Animated.View>
+        </AnimatedSection>
 
         {/* Settings */}
-        <Animated.View entering={FadeInDown.delay(300)}>
+        <AnimatedSection delay={300}>
           <Text style={styles.sectionTitle}>Configuración</Text>
           <Card variant="default" padding="none">
             <SettingItem
@@ -141,10 +177,10 @@ export const PerfilScreen: React.FC<PerfilScreenProps> = ({ navigation }) => {
               value={settings.vibracionActiva ? 'Activada' : 'Desactivada'}
             />
           </Card>
-        </Animated.View>
+        </AnimatedSection>
 
         {/* App Info */}
-        <Animated.View entering={FadeInDown.delay(400)}>
+        <AnimatedSection delay={400}>
           <Text style={styles.sectionTitle}>Información</Text>
           <Card variant="default" padding="none">
             <SettingItem
@@ -162,19 +198,21 @@ export const PerfilScreen: React.FC<PerfilScreenProps> = ({ navigation }) => {
               title="Política de privacidad"
             />
           </Card>
-        </Animated.View>
+        </AnimatedSection>
 
         {/* Logout */}
-        <Animated.View entering={FadeInDown.delay(500)} style={styles.logoutContainer}>
-          <Button
-            title="Cerrar Sesión"
-            variant="danger"
-            size="lg"
-            fullWidth
-            onPress={logout}
-            leftIcon={<Ionicons name="log-out-outline" size={22} color={colors.white} />}
-          />
-        </Animated.View>
+        <AnimatedSection delay={500}>
+          <View style={styles.logoutContainer}>
+            <Button
+              title="Cerrar Sesión"
+              variant="danger"
+              size="lg"
+              fullWidth
+              onPress={logout}
+              leftIcon={<Ionicons name="log-out-outline" size={22} color={colors.white} />}
+            />
+          </View>
+        </AnimatedSection>
 
         <Text style={styles.footerText}>
           LimeFit v2.0 - Hecho con 🍋

@@ -1,15 +1,15 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   RefreshControl,
   TouchableOpacity,
+  Animated,
 } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import Animated, { FadeInRight } from 'react-native-reanimated';
 import { colors, fontFamily, shadows } from '../constants/theme';
 import { RootStackParamList, Rutina } from '../types';
 import { useRutinas } from '../store/rutinasStore';
@@ -28,13 +28,32 @@ interface RutinaCardProps {
 }
 
 const RutinaCard: React.FC<RutinaCardProps> = ({ rutina, index, onPress }) => {
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const translateX = useRef(new Animated.Value(50)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 300,
+        delay: index * 100,
+        useNativeDriver: true,
+      }),
+      Animated.spring(translateX, {
+        toValue: 0,
+        delay: index * 100,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [index, fadeAnim, translateX]);
+
   const totalEjercicios = rutina.dias.reduce(
     (acc, dia) => acc + dia.ejercicios.length,
     0
   );
 
   return (
-    <Animated.View entering={FadeInRight.delay(index * 100).springify()}>
+    <Animated.View style={{ opacity: fadeAnim, transform: [{ translateX }] }}>
       <TouchableOpacity onPress={onPress} activeOpacity={0.8}>
         <Card variant="elevated" padding="lg" style={styles.rutinaCard}>
           <View style={styles.cardHeader}>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -7,15 +7,10 @@ import {
   Platform,
   Dimensions,
   StyleSheet,
+  Animated,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { StatusBar } from 'expo-status-bar';
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withSpring,
-  withDelay,
-} from 'react-native-reanimated';
 import { colors, fontFamily } from '../constants/theme';
 import { Button, Input } from '../components/ui';
 import { useLogin } from '../services/queries';
@@ -31,24 +26,32 @@ export const LoginScreen: React.FC = () => {
   const isAuthenticated = useUserStore((state) => state.isAuthenticated);
 
   // Animations
-  const logoScale = useSharedValue(0);
-  const formOpacity = useSharedValue(0);
-  const formTranslateY = useSharedValue(50);
+  const logoScale = useRef(new Animated.Value(0)).current;
+  const formOpacity = useRef(new Animated.Value(0)).current;
+  const formTranslateY = useRef(new Animated.Value(50)).current;
 
   useEffect(() => {
-    logoScale.value = withSpring(1, { damping: 10, stiffness: 100 });
-    formOpacity.value = withDelay(300, withSpring(1));
-    formTranslateY.value = withDelay(300, withSpring(0));
-  }, []);
+    Animated.spring(logoScale, {
+      toValue: 1,
+      damping: 10,
+      stiffness: 100,
+      useNativeDriver: true,
+    }).start();
 
-  const logoAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: logoScale.value }],
-  }));
-
-  const formAnimatedStyle = useAnimatedStyle(() => ({
-    opacity: formOpacity.value,
-    transform: [{ translateY: formTranslateY.value }],
-  }));
+    Animated.parallel([
+      Animated.timing(formOpacity, {
+        toValue: 1,
+        duration: 400,
+        delay: 300,
+        useNativeDriver: true,
+      }),
+      Animated.spring(formTranslateY, {
+        toValue: 0,
+        delay: 300,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [logoScale, formOpacity, formTranslateY]);
 
   const handleLogin = () => {
     setError('');
@@ -85,7 +88,7 @@ export const LoginScreen: React.FC = () => {
         style={styles.content}
       >
         {/* Logo Section */}
-        <Animated.View style={[styles.logoContainer, logoAnimatedStyle]}>
+        <Animated.View style={[styles.logoContainer, { transform: [{ scale: logoScale }] }]}>
           <View style={styles.logoWrapper}>
             <Text style={styles.logoIcon}>🍋</Text>
           </View>
@@ -94,7 +97,7 @@ export const LoginScreen: React.FC = () => {
         </Animated.View>
 
         {/* Form Section */}
-        <Animated.View style={[styles.formContainer, formAnimatedStyle]}>
+        <Animated.View style={[styles.formContainer, { opacity: formOpacity, transform: [{ translateY: formTranslateY }] }]}>
           <View style={styles.formCard}>
             <Text style={styles.welcomeText}>Bienvenido</Text>
             <Text style={styles.instructionText}>

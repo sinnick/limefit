@@ -1,11 +1,6 @@
-import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, ViewStyle, TextStyle } from 'react-native';
+import React, { useState, useRef } from 'react';
+import { View, Text, TouchableOpacity, ViewStyle, TextStyle, Animated } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withSpring,
-} from 'react-native-reanimated';
 import { colors, fontFamily, shadows } from '../constants/theme';
 import { EjercicioEnRutina, SetCompletado } from '../types';
 import { Card } from './ui/Card';
@@ -35,17 +30,23 @@ export const EjercicioCard: React.FC<EjercicioCardProps> = ({
 }) => {
   const [showModal, setShowModal] = useState(false);
   const haptics = useHaptics();
-  const scale = useSharedValue(1);
+  const scale = useRef(new Animated.Value(1)).current;
 
   const progress = (setsCompletados.length / ejercicio.sets) * 100;
   const isCompleted = setsCompletados.length >= ejercicio.sets;
 
   const handlePressIn = () => {
-    scale.value = withSpring(0.98);
+    Animated.spring(scale, {
+      toValue: 0.98,
+      useNativeDriver: true,
+    }).start();
   };
 
   const handlePressOut = () => {
-    scale.value = withSpring(1);
+    Animated.spring(scale, {
+      toValue: 1,
+      useNativeDriver: true,
+    }).start();
   };
 
   const handlePress = () => {
@@ -57,10 +58,6 @@ export const EjercicioCard: React.FC<EjercicioCardProps> = ({
     haptics.medium();
     setShowModal(true);
   };
-
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
-  }));
 
   const containerStyle: ViewStyle = {
     backgroundColor: isActive ? colors.surface : colors.card,
@@ -135,7 +132,7 @@ export const EjercicioCard: React.FC<EjercicioCardProps> = ({
 
   return (
     <>
-      <Animated.View style={animatedStyle}>
+      <Animated.View style={{ transform: [{ scale }] }}>
         <TouchableOpacity
           onPress={handlePress}
           onPressIn={handlePressIn}

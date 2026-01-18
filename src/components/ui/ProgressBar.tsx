@@ -1,11 +1,5 @@
-import React, { useEffect } from 'react';
-import { View, Text, ViewStyle, TextStyle } from 'react-native';
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withTiming,
-  Easing,
-} from 'react-native-reanimated';
+import React, { useEffect, useRef } from 'react';
+import { View, Text, ViewStyle, TextStyle, Animated, Easing } from 'react-native';
 import { colors, fontFamily } from '../../constants/theme';
 
 interface ProgressBarProps {
@@ -32,22 +26,20 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({
   style,
 }) => {
   const clampedProgress = Math.min(Math.max(progress, 0), 100);
-  const animatedProgress = useSharedValue(0);
+  const animatedProgress = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     if (animated) {
-      animatedProgress.value = withTiming(clampedProgress, {
+      Animated.timing(animatedProgress, {
+        toValue: clampedProgress,
         duration: 500,
         easing: Easing.bezier(0.25, 0.1, 0.25, 1),
-      });
+        useNativeDriver: false,
+      }).start();
     } else {
-      animatedProgress.value = clampedProgress;
+      animatedProgress.setValue(clampedProgress);
     }
-  }, [clampedProgress, animated]);
-
-  const animatedStyle = useAnimatedStyle(() => ({
-    width: `${animatedProgress.value}%`,
-  }));
+  }, [clampedProgress, animated, animatedProgress]);
 
   const containerStyle: ViewStyle = {
     width: '100%',
@@ -86,6 +78,11 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({
     borderRadius: height / 2,
   };
 
+  const animatedWidth = animatedProgress.interpolate({
+    inputRange: [0, 100],
+    outputRange: ['0%', '100%'],
+  });
+
   return (
     <View style={containerStyle}>
       {(showLabel || showPercentage) && (
@@ -97,7 +94,7 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({
         </View>
       )}
       <View style={trackStyle}>
-        <Animated.View style={[fillStyle, animatedStyle]} />
+        <Animated.View style={[fillStyle, { width: animatedWidth }]} />
       </View>
     </View>
   );
@@ -124,18 +121,6 @@ export const CircularProgress: React.FC<CircularProgressProps> = ({
   children,
 }) => {
   const clampedProgress = Math.min(Math.max(progress, 0), 100);
-  const radius = (size - strokeWidth) / 2;
-  const circumference = radius * 2 * Math.PI;
-  const strokeDashoffset = circumference - (clampedProgress / 100) * circumference;
-
-  const animatedOffset = useSharedValue(circumference);
-
-  useEffect(() => {
-    animatedOffset.value = withTiming(strokeDashoffset, {
-      duration: 800,
-      easing: Easing.bezier(0.25, 0.1, 0.25, 1),
-    });
-  }, [strokeDashoffset]);
 
   const containerStyle: ViewStyle = {
     width: size,

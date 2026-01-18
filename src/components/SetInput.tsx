@@ -1,12 +1,6 @@
-import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ViewStyle, TextStyle } from 'react-native';
+import React, { useState, useRef } from 'react';
+import { View, Text, TextInput, TouchableOpacity, ViewStyle, TextStyle, Animated } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withSpring,
-  withSequence,
-} from 'react-native-reanimated';
 import { colors, fontFamily, shadows } from '../constants/theme';
 import { SetCompletado } from '../types';
 import { useHaptics } from '../hooks/useHaptics';
@@ -33,8 +27,8 @@ export const SetInput: React.FC<SetInputProps> = ({
   const [peso, setPeso] = useState(completedSet?.peso.toString() || previousSet?.peso.toString() || targetWeight.toString());
   const [reps, setReps] = useState(completedSet?.reps.toString() || targetReps.toString());
   const haptics = useHaptics();
-  const scale = useSharedValue(1);
-  const checkScale = useSharedValue(isCompleted ? 1 : 0);
+  const scale = useRef(new Animated.Value(1)).current;
+  const checkScale = useRef(new Animated.Value(isCompleted ? 1 : 0)).current;
 
   const handleComplete = () => {
     if (isCompleted) return;
@@ -48,11 +42,22 @@ export const SetInput: React.FC<SetInputProps> = ({
     }
 
     haptics.success();
-    scale.value = withSequence(
-      withSpring(1.05),
-      withSpring(1)
-    );
-    checkScale.value = withSpring(1);
+
+    Animated.sequence([
+      Animated.spring(scale, {
+        toValue: 1.05,
+        useNativeDriver: true,
+      }),
+      Animated.spring(scale, {
+        toValue: 1,
+        useNativeDriver: true,
+      }),
+    ]).start();
+
+    Animated.spring(checkScale, {
+      toValue: 1,
+      useNativeDriver: true,
+    }).start();
 
     onComplete({
       setNumero: setNumber,
@@ -82,15 +87,6 @@ export const SetInput: React.FC<SetInputProps> = ({
     haptics.light();
     setReps((prev) => Math.max(0, parseInt(prev || '0') - 1).toString());
   };
-
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
-  }));
-
-  const checkAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: checkScale.value }],
-    opacity: checkScale.value,
-  }));
 
   const containerStyle: ViewStyle = {
     flexDirection: 'row',
@@ -167,7 +163,7 @@ export const SetInput: React.FC<SetInputProps> = ({
   };
 
   return (
-    <Animated.View style={animatedStyle}>
+    <Animated.View style={{ transform: [{ scale }] }}>
       <View style={containerStyle}>
         <View style={setNumberStyle}>
           <Text style={setNumberTextStyle}>{setNumber}</Text>
@@ -222,7 +218,7 @@ export const SetInput: React.FC<SetInputProps> = ({
           activeOpacity={0.7}
         >
           {isCompleted ? (
-            <Animated.View style={checkAnimatedStyle}>
+            <Animated.View style={{ transform: [{ scale: checkScale }], opacity: checkScale }}>
               <Ionicons name="checkmark" size={24} color={colors.white} />
             </Animated.View>
           ) : (

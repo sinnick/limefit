@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -7,17 +7,11 @@ import {
   StyleSheet,
   Alert,
   Dimensions,
+  Animated,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp } from '@react-navigation/native';
-import Animated, {
-  FadeIn,
-  FadeInDown,
-  FadeInUp,
-  SlideInRight,
-  SlideOutLeft,
-} from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 import { colors, fontFamily, shadows } from '../constants/theme';
 import { RootStackParamList, SetCompletado, EjercicioWorkout } from '../types';
@@ -52,6 +46,12 @@ export const WorkoutScreen: React.FC<WorkoutScreenProps> = ({
   const [showExitModal, setShowExitModal] = useState(false);
   const [showSummaryModal, setShowSummaryModal] = useState(false);
 
+  const headerAnim = useRef(new Animated.Value(0)).current;
+  const ejercicioAnim = useRef(new Animated.Value(0)).current;
+  const ejercicioTranslateX = useRef(new Animated.Value(50)).current;
+  const buttonAnim = useRef(new Animated.Value(0)).current;
+  const buttonTranslateY = useRef(new Animated.Value(20)).current;
+
   const {
     iniciarWorkout,
     finalizarWorkout,
@@ -72,12 +72,54 @@ export const WorkoutScreen: React.FC<WorkoutScreenProps> = ({
       iniciarWorkout(rutina, dia);
       stopwatch.start();
     }
+
+    Animated.timing(headerAnim, {
+      toValue: 1,
+      duration: 400,
+      useNativeDriver: true,
+    }).start();
   }, []);
+
+  // Animate ejercicio changes
+  useEffect(() => {
+    if (ejercicioActual) {
+      ejercicioAnim.setValue(0);
+      ejercicioTranslateX.setValue(50);
+      Animated.parallel([
+        Animated.timing(ejercicioAnim, {
+          toValue: 1,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+        Animated.spring(ejercicioTranslateX, {
+          toValue: 0,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }
+  }, [ejercicioActual?.id, ejercicioAnim, ejercicioTranslateX]);
 
   // Progress calculation
   const progress = workout
     ? (workout.ejercicios.filter((e) => e.completado).length / workout.ejercicios.length) * 100
     : 0;
+
+  // Animate finish button when progress >= 50
+  useEffect(() => {
+    if (progress >= 50) {
+      Animated.parallel([
+        Animated.timing(buttonAnim, {
+          toValue: 1,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+        Animated.spring(buttonTranslateY, {
+          toValue: 0,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }
+  }, [progress >= 50, buttonAnim, buttonTranslateY]);
 
   const handleCompleteSet = useCallback(
     (set: SetCompletado) => {
@@ -145,7 +187,7 @@ export const WorkoutScreen: React.FC<WorkoutScreenProps> = ({
   return (
     <View style={styles.container}>
       {/* Header */}
-      <Animated.View entering={FadeIn} style={styles.header}>
+      <Animated.View style={[styles.header, { opacity: headerAnim }]}>
         <TouchableOpacity style={styles.backButton} onPress={handleBackPress}>
           <Ionicons name="close" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
@@ -189,9 +231,7 @@ export const WorkoutScreen: React.FC<WorkoutScreenProps> = ({
         </TouchableOpacity>
 
         <Animated.View
-          key={ejercicioActual.id}
-          entering={SlideInRight}
-          style={styles.ejercicioInfo}
+          style={[styles.ejercicioInfo, { opacity: ejercicioAnim, transform: [{ translateX: ejercicioTranslateX }] }]}
         >
           <Text style={styles.ejercicioNumber}>
             Ejercicio {workout.ejercicioActualIndex + 1} de {workout.ejercicios.length}
@@ -243,20 +283,16 @@ export const WorkoutScreen: React.FC<WorkoutScreenProps> = ({
           const previousSet = index > 0 ? ejercicioActual.setsCompletados[index - 1] : undefined;
 
           return (
-            <Animated.View
+            <SetInput
               key={index}
-              entering={FadeInDown.delay(index * 50)}
-            >
-              <SetInput
-                setNumber={index + 1}
-                targetReps={ejercicioActual.repsObjetivo}
-                targetWeight={ejercicioActual.pesoObjetivo}
-                previousSet={previousSet}
-                onComplete={(set) => handleCompleteSet(set)}
-                isCompleted={!!completedSet}
-                completedSet={completedSet}
-              />
-            </Animated.View>
+              setNumber={index + 1}
+              targetReps={ejercicioActual.repsObjetivo}
+              targetWeight={ejercicioActual.pesoObjetivo}
+              previousSet={previousSet}
+              onComplete={(set) => handleCompleteSet(set)}
+              isCompleted={!!completedSet}
+              completedSet={completedSet}
+            />
           );
         })}
       </ScrollView>
@@ -264,8 +300,7 @@ export const WorkoutScreen: React.FC<WorkoutScreenProps> = ({
       {/* Finish Button */}
       {progress >= 50 && (
         <Animated.View
-          entering={FadeInUp}
-          style={styles.finishButtonContainer}
+          style={[styles.finishButtonContainer, { opacity: buttonAnim, transform: [{ translateY: buttonTranslateY }] }]}
         >
           <Button
             title={progress === 100 ? 'Finalizar Entrenamiento' : 'Terminar Antes'}

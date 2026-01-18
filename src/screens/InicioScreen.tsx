@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -7,17 +7,11 @@ import {
   StyleSheet,
   Dimensions,
   RefreshControl,
+  Animated,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withSpring,
-  withDelay,
-  FadeInDown,
-} from 'react-native-reanimated';
 import { colors, fontFamily, shadows } from '../constants/theme';
 import { RootStackParamList } from '../types';
 import { useUser, useUserStore } from '../store/userStore';
@@ -50,8 +44,27 @@ const MenuCard: React.FC<MenuCardProps> = ({
   onPress,
   delay = 0,
 }) => {
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const translateY = useRef(new Animated.Value(20)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 400,
+        delay,
+        useNativeDriver: true,
+      }),
+      Animated.spring(translateY, {
+        toValue: 0,
+        delay,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [delay, fadeAnim, translateY]);
+
   return (
-    <Animated.View entering={FadeInDown.delay(delay).springify()}>
+    <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY }] }}>
       <TouchableOpacity onPress={onPress} activeOpacity={0.8}>
         <LinearGradient
           colors={[colors.card, colors.surface]}
@@ -79,6 +92,11 @@ export const InicioScreen: React.FC<InicioScreenProps> = ({ navigation }) => {
   const rutinas = useRutinas();
   const historial = useHistorialWorkouts();
 
+  const statsAnim = useRef(new Animated.Value(0)).current;
+  const statsTranslateY = useRef(new Animated.Value(20)).current;
+  const lastWorkoutAnim = useRef(new Animated.Value(0)).current;
+  const lastWorkoutTranslateY = useRef(new Animated.Value(20)).current;
+
   const {
     isLoading: loadingRutinas,
     refetch: refetchRutinas,
@@ -90,6 +108,38 @@ export const InicioScreen: React.FC<InicioScreenProps> = ({ navigation }) => {
   );
 
   const isLoading = loadingRutinas || loadingRecords;
+
+  useEffect(() => {
+    if (!isLoading) {
+      Animated.parallel([
+        Animated.timing(statsAnim, {
+          toValue: 1,
+          duration: 400,
+          delay: 100,
+          useNativeDriver: true,
+        }),
+        Animated.spring(statsTranslateY, {
+          toValue: 0,
+          delay: 100,
+          useNativeDriver: true,
+        }),
+      ]).start();
+
+      Animated.parallel([
+        Animated.timing(lastWorkoutAnim, {
+          toValue: 1,
+          duration: 400,
+          delay: 600,
+          useNativeDriver: true,
+        }),
+        Animated.spring(lastWorkoutTranslateY, {
+          toValue: 0,
+          delay: 600,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }
+  }, [isLoading, statsAnim, statsTranslateY, lastWorkoutAnim, lastWorkoutTranslateY]);
 
   // Estadísticas
   const entrenamientosEstaSemana = historial.filter((w) => {
@@ -147,7 +197,7 @@ export const InicioScreen: React.FC<InicioScreenProps> = ({ navigation }) => {
         />
 
         {/* Quick Stats */}
-        <Animated.View entering={FadeInDown.delay(100).springify()} style={styles.statsContainer}>
+        <Animated.View style={[styles.statsContainer, { opacity: statsAnim, transform: [{ translateY: statsTranslateY }] }]}>
           <View style={styles.statsRow}>
             <View style={styles.statItem}>
               <Text style={styles.statValue}>{entrenamientosEstaSemana}</Text>
@@ -211,7 +261,7 @@ export const InicioScreen: React.FC<InicioScreenProps> = ({ navigation }) => {
 
         {/* Last Workout */}
         {historial.length > 0 && (
-          <Animated.View entering={FadeInDown.delay(600).springify()} style={styles.lastWorkoutContainer}>
+          <Animated.View style={[styles.lastWorkoutContainer, { opacity: lastWorkoutAnim, transform: [{ translateY: lastWorkoutTranslateY }] }]}>
             <Text style={styles.sectionTitle}>Último entrenamiento</Text>
             <Card variant="gradient" padding="lg">
               <View style={styles.lastWorkoutHeader}>

@@ -1,14 +1,14 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
+  Animated,
 } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import Animated, { FadeInRight } from 'react-native-reanimated';
 import { colors, fontFamily, shadows } from '../constants/theme';
 import { RootStackParamList, WorkoutCompletado } from '../types';
 import { useHistorialWorkouts } from '../store/workoutStore';
@@ -25,6 +25,25 @@ interface WorkoutCardProps {
 }
 
 const WorkoutCard: React.FC<WorkoutCardProps> = ({ workout, index }) => {
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const translateX = useRef(new Animated.Value(50)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 300,
+        delay: index * 50,
+        useNativeDriver: true,
+      }),
+      Animated.spring(translateX, {
+        toValue: 0,
+        delay: index * 50,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [index, fadeAnim, translateX]);
+
   const formattedDate = new Date(workout.fecha).toLocaleDateString('es-ES', {
     weekday: 'long',
     day: 'numeric',
@@ -39,7 +58,7 @@ const WorkoutCard: React.FC<WorkoutCardProps> = ({ workout, index }) => {
   const ejerciciosCompletados = workout.ejercicios.filter((e) => e.completado).length;
 
   return (
-    <Animated.View entering={FadeInRight.delay(index * 50).springify()}>
+    <Animated.View style={{ opacity: fadeAnim, transform: [{ translateX }] }}>
       <Card variant="elevated" padding="lg" style={styles.workoutCard}>
         <View style={styles.cardHeader}>
           <View style={styles.dateContainer}>

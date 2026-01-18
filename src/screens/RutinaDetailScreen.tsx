@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -6,18 +6,12 @@ import {
   TouchableOpacity,
   StyleSheet,
   Dimensions,
+  Animated,
 } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp } from '@react-navigation/native';
-import Animated, {
-  FadeIn,
-  FadeInDown,
-  useSharedValue,
-  useAnimatedStyle,
-  withSpring,
-} from 'react-native-reanimated';
 import { colors, fontFamily, shadows } from '../constants/theme';
 import { RootStackParamList, DiaRutina, EjercicioEnRutina } from '../types';
 import { Button, Card, Badge, ProgressBar } from '../components/ui';
@@ -69,6 +63,64 @@ export const RutinaDetailScreen: React.FC<RutinaDetailScreenProps> = ({
   const [selectedDiaIndex, setSelectedDiaIndex] = useState(0);
   const haptics = useHaptics();
 
+  const headerAnim = useRef(new Animated.Value(0)).current;
+  const diasAnim = useRef(new Animated.Value(0)).current;
+  const diasTranslateY = useRef(new Animated.Value(20)).current;
+  const ejerciciosAnim = useRef(new Animated.Value(0)).current;
+  const ejerciciosTranslateY = useRef(new Animated.Value(20)).current;
+  const buttonAnim = useRef(new Animated.Value(0)).current;
+  const buttonTranslateY = useRef(new Animated.Value(20)).current;
+
+  useEffect(() => {
+    Animated.timing(headerAnim, {
+      toValue: 1,
+      duration: 400,
+      useNativeDriver: true,
+    }).start();
+
+    Animated.parallel([
+      Animated.timing(diasAnim, {
+        toValue: 1,
+        duration: 400,
+        delay: 100,
+        useNativeDriver: true,
+      }),
+      Animated.spring(diasTranslateY, {
+        toValue: 0,
+        delay: 100,
+        useNativeDriver: true,
+      }),
+    ]).start();
+
+    Animated.parallel([
+      Animated.timing(ejerciciosAnim, {
+        toValue: 1,
+        duration: 400,
+        delay: 200,
+        useNativeDriver: true,
+      }),
+      Animated.spring(ejerciciosTranslateY, {
+        toValue: 0,
+        delay: 200,
+        useNativeDriver: true,
+      }),
+    ]).start();
+
+    Animated.parallel([
+      Animated.timing(buttonAnim, {
+        toValue: 1,
+        duration: 400,
+        delay: 300,
+        useNativeDriver: true,
+      }),
+      Animated.spring(buttonTranslateY, {
+        toValue: 0,
+        delay: 300,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [headerAnim, diasAnim, diasTranslateY, ejerciciosAnim, ejerciciosTranslateY, buttonAnim, buttonTranslateY]);
+
   const selectedDia = rutina.dias[selectedDiaIndex];
   const totalEjercicios = selectedDia?.ejercicios.length || 0;
 
@@ -81,7 +133,7 @@ export const RutinaDetailScreen: React.FC<RutinaDetailScreenProps> = ({
   return (
     <View style={styles.container}>
       {/* Header */}
-      <Animated.View entering={FadeIn} style={styles.header}>
+      <Animated.View style={[styles.header, { opacity: headerAnim }]}>
         <TouchableOpacity
           style={styles.backButton}
           onPress={() => navigation.goBack()}
@@ -102,7 +154,7 @@ export const RutinaDetailScreen: React.FC<RutinaDetailScreenProps> = ({
       </Animated.View>
 
       {/* Día Tabs */}
-      <Animated.View entering={FadeInDown.delay(100)} style={styles.diasContainer}>
+      <Animated.View style={[styles.diasContainer, { opacity: diasAnim, transform: [{ translateY: diasTranslateY }] }]}>
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -121,7 +173,7 @@ export const RutinaDetailScreen: React.FC<RutinaDetailScreenProps> = ({
 
       {/* Ejercicios List */}
       {selectedDia && (
-        <Animated.View entering={FadeInDown.delay(200)} style={styles.ejerciciosContainer}>
+        <Animated.View style={[styles.ejerciciosContainer, { opacity: ejerciciosAnim, transform: [{ translateY: ejerciciosTranslateY }] }]}>
           <View style={styles.ejerciciosHeader}>
             <Text style={styles.ejerciciosTitle}>{selectedDia.nombre}</Text>
             <Text style={styles.ejerciciosCount}>{totalEjercicios} ejercicios</Text>
@@ -146,8 +198,7 @@ export const RutinaDetailScreen: React.FC<RutinaDetailScreenProps> = ({
 
       {/* Start Workout Button */}
       <Animated.View
-        entering={FadeInDown.delay(300)}
-        style={styles.startButtonContainer}
+        style={[styles.startButtonContainer, { opacity: buttonAnim, transform: [{ translateY: buttonTranslateY }] }]}
       >
         <Button
           title="Comenzar Entrenamiento"
