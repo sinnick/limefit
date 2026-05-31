@@ -26,6 +26,10 @@ export const SetInput: React.FC<SetInputProps> = ({
 }) => {
   const [peso, setPeso] = useState(completedSet?.peso.toString() || previousSet?.peso.toString() || targetWeight.toString());
   const [reps, setReps] = useState(completedSet?.reps.toString() || targetReps.toString());
+  // 2.3: RPE (1-10) + notas por set. Por defecto sugiere el RPE del set anterior.
+  const [rpe, setRpe] = useState<number | undefined>(completedSet?.rpe ?? previousSet?.rpe);
+  const [notas, setNotas] = useState(completedSet?.notas ?? '');
+  const [showDetails, setShowDetails] = useState(false);
   const haptics = useHaptics();
   const scale = useRef(new Animated.Value(1)).current;
   const checkScale = useRef(new Animated.Value(isCompleted ? 1 : 0)).current;
@@ -59,13 +63,24 @@ export const SetInput: React.FC<SetInputProps> = ({
       useNativeDriver: true,
     }).start();
 
+    const notasTrim = notas.trim();
     onComplete({
       setNumero: setNumber,
       peso: pesoNum,
       reps: repsNum,
       completado: true,
       timestamp: new Date().toISOString(),
+      // 2.3: solo se incluyen si el socio los registró (campos opcionales).
+      ...(rpe != null ? { rpe } : {}),
+      ...(notasTrim ? { notas: notasTrim } : {}),
     });
+  };
+
+  const handleSelectRpe = (value: number) => {
+    if (isCompleted) return;
+    haptics.light();
+    // Volver a tocar el mismo valor lo deselecciona (RPE opcional).
+    setRpe((prev) => (prev === value ? undefined : value));
   };
 
   const incrementPeso = () => {
@@ -162,6 +177,61 @@ export const SetInput: React.FC<SetInputProps> = ({
     marginLeft: 12,
   };
 
+  // 2.3: RPE + notas
+  const detailsToggleStyle: ViewStyle = {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingLeft: 44,
+    paddingVertical: 6,
+  };
+
+  const detailsContainerStyle: ViewStyle = {
+    paddingLeft: 44,
+    paddingRight: 4,
+    paddingBottom: 8,
+    gap: 8,
+  };
+
+  const rpeRowStyle: ViewStyle = {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+  };
+
+  const rpeChipStyle = (active: boolean): ViewStyle => ({
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: active ? colors.lime : colors.card,
+    borderWidth: 1,
+    borderColor: active ? colors.lime : colors.border,
+  });
+
+  const rpeChipTextStyle = (active: boolean): TextStyle => ({
+    fontFamily: fontFamily.bold,
+    fontSize: 13,
+    color: active ? colors.background : colors.textSecondary,
+  });
+
+  const notasInputStyle: TextStyle = {
+    backgroundColor: colors.card,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontFamily: fontFamily.regular,
+    fontSize: 14,
+    color: colors.textPrimary,
+    minHeight: 40,
+    borderWidth: 1,
+    borderColor: colors.border,
+  };
+
+  // Cuando ya está completado, sólo se muestra (read-only) si hay datos.
+  const showCompletedDetails = isCompleted && (completedSet?.rpe != null || !!completedSet?.notas);
+
   return (
     <Animated.View style={{ transform: [{ scale }] }}>
       <View style={containerStyle}>
@@ -227,10 +297,82 @@ export const SetInput: React.FC<SetInputProps> = ({
         </TouchableOpacity>
       </View>
 
+      {/* 2.3: RPE + notas — editable mientras el set no está completado */}
+      {!isCompleted && (
+        <>
+          <TouchableOpacity
+            style={detailsToggleStyle}
+            onPress={() => {
+              haptics.light();
+              setShowDetails((prev) => !prev);
+            }}
+            activeOpacity={0.7}
+          >
+            <Ionicons
+              name={showDetails ? 'chevron-up' : 'chevron-down'}
+              size={16}
+              color={colors.textMuted}
+            />
+            <Text style={{ fontFamily: fontFamily.medium, fontSize: 12, color: colors.textMuted }}>
+              RPE y notas{rpe != null ? ` · RPE ${rpe}` : ''}
+            </Text>
+          </TouchableOpacity>
+
+          {showDetails && (
+            <View style={detailsContainerStyle}>
+              <Text style={labelStyle}>RPE (1-10)</Text>
+              <View style={rpeRowStyle}>
+                {Array.from({ length: 10 }).map((_, i) => {
+                  const value = i + 1;
+                  const active = rpe === value;
+                  return (
+                    <TouchableOpacity
+                      key={value}
+                      onPress={() => handleSelectRpe(value)}
+                      style={rpeChipStyle(active)}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={rpeChipTextStyle(active)}>{value}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+
+              <Text style={labelStyle}>NOTAS</Text>
+              <TextInput
+                style={notasInputStyle}
+                value={notas}
+                onChangeText={setNotas}
+                placeholder="Sensación, técnica, dolor…"
+                placeholderTextColor={colors.textMuted}
+                multiline
+              />
+            </View>
+          )}
+        </>
+      )}
+
+      {/* 2.3: RPE + notas — vista de solo lectura cuando el set ya se completó */}
+      {showCompletedDetails && (
+        <View style={{ paddingLeft: 44, paddingRight: 4, marginBottom: 8, gap: 4 }}>
+          {completedSet?.rpe != null && (
+            <Text style={{ fontFamily: fontFamily.medium, fontSize: 12, color: colors.textSecondary }}>
+              RPE: {completedSet.rpe}/10
+            </Text>
+          )}
+          {!!completedSet?.notas && (
+            <Text style={{ fontFamily: fontFamily.regular, fontSize: 12, color: colors.textMuted }}>
+              {completedSet.notas}
+            </Text>
+          )}
+        </View>
+      )}
+
       {previousSet && !isCompleted && (
         <View style={{ flexDirection: 'row', gap: 16, paddingLeft: 44, marginBottom: 8 }}>
           <Text style={{ fontFamily: fontFamily.regular, fontSize: 12, color: colors.textMuted }}>
             Anterior: {previousSet.peso}kg × {previousSet.reps} reps
+            {previousSet.rpe != null ? ` · RPE ${previousSet.rpe}` : ''}
           </Text>
         </View>
       )}

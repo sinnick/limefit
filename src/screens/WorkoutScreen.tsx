@@ -11,11 +11,16 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RouteProp } from '@react-navigation/native';
+import { RouteProp, useFocusEffect } from '@react-navigation/native';
 import * as Haptics from 'expo-haptics';
 import { colors, fontFamily, shadows } from '../constants/theme';
 import { RootStackParamList, SetCompletado, EjercicioWorkout, WorkoutCompletado } from '../types';
-import { useWorkoutStore, useWorkoutActivo, useEjercicioActual } from '../store/workoutStore';
+import {
+  useWorkoutStore,
+  useWorkoutActivo,
+  useEjercicioActual,
+  useSeleccionSustitucion,
+} from '../store/workoutStore';
 import { useRecordsStore } from '../store/recordsStore';
 import { useUser } from '../store/userStore';
 import { Button, Card, ProgressBar, Modal, ConfirmModal } from '../components/ui';
@@ -62,10 +67,13 @@ export const WorkoutScreen: React.FC<WorkoutScreenProps> = ({
     completarSet,
     siguienteEjercicio,
     anteriorEjercicio,
+    sustituirEjercicio,
+    limpiarSeleccionSustitucion,
   } = useWorkoutStore();
 
   const workout = useWorkoutActivo();
   const ejercicioActual = useEjercicioActual();
+  const seleccionSustitucion = useSeleccionSustitucion();
   const checkAndUpdatePR = useRecordsStore((state) => state.checkAndUpdatePR);
 
   // Iniciar workout al montar
@@ -184,6 +192,35 @@ export const WorkoutScreen: React.FC<WorkoutScreenProps> = ({
     setShowExitModal(true);
   };
 
+  // 2.2: abrir la biblioteca en modo sustitución, filtrada por el grupo muscular
+  // del ejercicio actual (cuando se conozca), para sugerir reemplazos equivalentes.
+  const handleSustituir = useCallback(() => {
+    if (!workout || !ejercicioActual) return;
+    haptics.light();
+    // EjercicioWorkout no almacena grupo muscular (las rutinas no lo traen),
+    // así que abrimos sin filtro; el socio puede filtrar dentro de Biblioteca.
+    navigation.navigate('Biblioteca', {
+      modoSustitucion: true,
+      ejercicioIndex: workout.ejercicioActualIndex,
+    });
+  }, [workout, ejercicioActual, navigation, haptics]);
+
+  // 2.2: al recuperar el foco, si Biblioteca dejó una selección en el store,
+  // aplicar la sustitución (preserva setsCompletados[]) y limpiar el slot.
+  useFocusEffect(
+    useCallback(() => {
+      if (seleccionSustitucion) {
+        sustituirEjercicio(
+          seleccionSustitucion.ejercicioIndex,
+          seleccionSustitucion.ejercicio
+        );
+        limpiarSeleccionSustitucion();
+        toast.success(`Ejercicio sustituido por ${seleccionSustitucion.ejercicio.nombre}`);
+        haptics.medium();
+      }
+    }, [seleccionSustitucion, sustituirEjercicio, limpiarSeleccionSustitucion, toast, haptics])
+  );
+
   const summaryModal = (
     <Modal
       visible={showSummaryModal}
@@ -301,6 +338,16 @@ export const WorkoutScreen: React.FC<WorkoutScreenProps> = ({
               </Text>
             )}
           </View>
+
+          {/* 2.2: sustituir el ejercicio actual sin perder el progreso */}
+          <TouchableOpacity
+            style={styles.sustituirButton}
+            onPress={handleSustituir}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="swap-horizontal" size={16} color={colors.lime} />
+            <Text style={styles.sustituirButtonText}>Sustituir</Text>
+          </TouchableOpacity>
         </Animated.View>
 
         <TouchableOpacity
@@ -508,6 +555,23 @@ const styles = StyleSheet.create({
     fontFamily: fontFamily.regular,
     fontSize: 14,
     color: colors.textSecondary,
+  },
+  sustituirButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.lime,
+  },
+  sustituirButtonText: {
+    fontFamily: fontFamily.medium,
+    fontSize: 13,
+    color: colors.lime,
   },
   setsContainer: {
     flex: 1,

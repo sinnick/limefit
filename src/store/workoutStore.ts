@@ -7,6 +7,7 @@ import {
   WorkoutCompletado,
   EjercicioWorkout,
   SetCompletado,
+  EjercicioBiblioteca,
   Rutina,
   DiaRutina,
 } from '../types';
@@ -17,6 +18,11 @@ interface WorkoutState {
   tiempoDescanso: number;
   tiempoRestante: number;
   enDescanso: boolean;
+  // 2.2: slot puente para la sustitución. BibliotecaScreen (modoSustitucion) lo
+  // setea al elegir un ejercicio; WorkoutScreen lo consume al recuperar el foco.
+  // Los params de navegación deben ser serializables, así que no pasamos el
+  // objeto Ejercicio por la ruta sino por el store.
+  seleccionSustitucion: { ejercicioIndex: number; ejercicio: EjercicioBiblioteca } | null;
 
   // Workout Actions
   iniciarWorkout: (rutina: Rutina, dia: DiaRutina) => void;
@@ -29,6 +35,10 @@ interface WorkoutState {
   siguienteEjercicio: () => void;
   anteriorEjercicio: () => void;
   irAEjercicio: (index: number) => void;
+  // 2.2: Sustitución de ejercicio
+  sustituirEjercicio: (ejercicioIndex: number, nuevoEjercicio: EjercicioBiblioteca) => void;
+  setSeleccionSustitucion: (ejercicioIndex: number, ejercicio: EjercicioBiblioteca) => void;
+  limpiarSeleccionSustitucion: () => void;
 
   // Set Actions
   completarSet: (ejercicioIndex: number, set: SetCompletado) => void;
@@ -55,6 +65,7 @@ export const useWorkoutStore = create<WorkoutState>()(
       tiempoDescanso: 90,
       tiempoRestante: 0,
       enDescanso: false,
+      seleccionSustitucion: null,
 
       iniciarWorkout: (rutina, dia) => {
         const ejercicios: EjercicioWorkout[] = dia.ejercicios.map((e) => ({
@@ -190,6 +201,39 @@ export const useWorkoutStore = create<WorkoutState>()(
           };
         }),
 
+      // 2.2: Sustituye el ejercicio en `ejercicioIndex` por otro de la biblioteca.
+      // Reemplaza ejercicioId / nombre y los objetivos derivables, PRESERVANDO
+      // setsCompletados[] y el flag `completado` (no se pierde el progreso del set
+      // anterior; en la UI sigue visible como "Anterior: X kg x Y reps").
+      sustituirEjercicio: (ejercicioIndex, nuevoEjercicio) =>
+        set((state) => {
+          if (!state.workoutActivo) return state;
+          const ejercicios = [...state.workoutActivo.ejercicios];
+          const anterior = ejercicios[ejercicioIndex];
+          if (!anterior) return state;
+
+          ejercicios[ejercicioIndex] = {
+            ...anterior,
+            ejercicioId: nuevoEjercicio.id,
+            nombre: nuevoEjercicio.nombre,
+            // setsCompletados, setsObjetivo, repsObjetivo, pesoObjetivo y
+            // completado se conservan tal cual (no se reinicia el progreso).
+          };
+
+          return {
+            workoutActivo: {
+              ...state.workoutActivo,
+              ejercicios,
+            },
+            seleccionSustitucion: null,
+          };
+        }),
+
+      setSeleccionSustitucion: (ejercicioIndex, ejercicio) =>
+        set({ seleccionSustitucion: { ejercicioIndex, ejercicio } }),
+
+      limpiarSeleccionSustitucion: () => set({ seleccionSustitucion: null }),
+
       completarSet: (ejercicioIndex, nuevoSet) =>
         set((state) => {
           if (!state.workoutActivo) return state;
@@ -270,3 +314,6 @@ export const useEjercicioActual = () => {
   if (!workout) return null;
   return workout.ejercicios[workout.ejercicioActualIndex];
 };
+// 2.2: slot puente de sustitución (lo consume WorkoutScreen al volver de Biblioteca).
+export const useSeleccionSustitucion = () =>
+  useWorkoutStore((state) => state.seleccionSustitucion);
