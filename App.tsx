@@ -35,6 +35,11 @@ import BibliotecaScreen from './src/screens/BibliotecaScreen';
 import DetalleEjercicioScreen from './src/screens/DetalleEjercicioScreen';
 import ScanQRScreen from './src/screens/ScanQRScreen';
 import NotificacionesScreen from './src/screens/NotificacionesScreen';
+// Fase 4 — default import DIRECTO (no barrel).
+import MembresiaScreen from './src/screens/MembresiaScreen';
+import ClasesScreen from './src/screens/ClasesScreen';
+import MisReservasScreen from './src/screens/MisReservasScreen';
+import AnunciosScreen from './src/screens/AnunciosScreen';
 
 // Providers
 import { ToastProvider } from './src/components/ui/Toast';
@@ -119,6 +124,11 @@ const Navigation: React.FC = () => {
           <Stack.Screen name="DetalleEjercicio" component={DetalleEjercicioScreen} />
           <Stack.Screen name="ScanQR" component={ScanQRScreen} />
           <Stack.Screen name="Notificaciones" component={NotificacionesScreen} />
+          {/* Fase 4 */}
+          <Stack.Screen name="Membresia" component={MembresiaScreen} />
+          <Stack.Screen name="Clases" component={ClasesScreen} />
+          <Stack.Screen name="MisReservas" component={MisReservasScreen} />
+          <Stack.Screen name="Anuncios" component={AnunciosScreen} />
         </Stack.Navigator>
       )}
     </NavigationContainer>

@@ -17,6 +17,11 @@ import {
   EjercicioBiblioteca,
   Asistencia,
   MetodoCheckin,
+  Membresia,
+  Clase,
+  Reserva,
+  ReservaResultado,
+  Anuncio,
 } from '../types';
 
 // ============================================================================
@@ -604,6 +609,141 @@ export const asistenciaApi = {
       { dni, ...(rango ?? {}) }
     );
     return (response.data.asistencias ?? []).map(adaptAsistencia);
+  },
+};
+
+// ============================================================================
+// Fase 4 — Adaptadores backend → app (CONTRACT-fase4-app.md §2.a).
+// Defensivos como los existentes: si ya viene en formato app, passthrough.
+// ============================================================================
+
+// Membresía: `data` ya viene camelCase del backend; passthrough + fechas a ISO.
+const adaptMembresia = (d: any): Membresia => {
+  if (!d) return { tieneMembresia: false };
+  if (!d.tieneMembresia) return { tieneMembresia: false };
+  return {
+    tieneMembresia: true,
+    estado: d.estado,
+    planNombre: d.planNombre ?? '',
+    fechaInicio: d.fechaInicio != null ? String(d.fechaInicio) : undefined,
+    fechaFin: d.fechaFin != null ? String(d.fechaFin) : undefined,
+    diasRestantes: d.diasRestantes != null ? Number(d.diasRestantes) : undefined,
+  };
+};
+
+// Clase: MAYÚSCULAS mezcladas con camelCase → camelCase app.
+const adaptClase = (c: any): Clase => {
+  // Si ya viene en formato app (tiene `nombre` camelCase), passthrough.
+  if (!c || c.nombre !== undefined) return c as Clase;
+  return {
+    id: c._id != null ? String(c._id) : '',
+    nombre: c.NOMBRE ?? '',
+    instructor: c.INSTRUCTOR ?? '',
+    diaSemana: c.DIA_SEMANA as DiaSemana,
+    hora: c.HORA ?? '',
+    cupo: c.CUPO ?? 0,
+    cupoOcupado: c.cupoOcupado ?? 0,
+    cupoDisponible: c.cupoDisponible ?? 0,
+    proximoDictado: c.proximoDictado != null ? String(c.proximoDictado) : '',
+    ...(c.yaReservada !== undefined ? { yaReservada: !!c.yaReservada } : {}),
+  };
+};
+
+// Reserva: `clase` anidada en MAYÚSCULAS (o null) → camelCase app.
+const adaptReserva = (r: any): Reserva => {
+  // Si ya viene en formato app (tiene `fecha` camelCase), passthrough.
+  if (!r || r.fecha !== undefined) return r as Reserva;
+  const claseRaw = r.clase;
+  return {
+    reservaId: r.reservaId != null ? String(r.reservaId) : '',
+    claseId: r.claseId != null ? String(r.claseId) : '',
+    fecha: r.FECHA != null ? String(r.FECHA) : '',
+    estado: r.estado,
+    ...(claseRaw
+      ? {
+          clase: {
+            nombre: claseRaw.NOMBRE ?? '',
+            instructor: claseRaw.INSTRUCTOR ?? '',
+            diaSemana: claseRaw.DIA_SEMANA as DiaSemana,
+            hora: claseRaw.HORA ?? '',
+          },
+        }
+      : {}),
+  };
+};
+
+// Anuncio: MAYÚSCULAS → camelCase app.
+const adaptAnuncio = (a: any): Anuncio => {
+  // Si ya viene en formato app (tiene `titulo` camelCase), passthrough.
+  if (!a || a.titulo !== undefined) return a as Anuncio;
+  return {
+    id: a._id != null ? String(a._id) : '',
+    titulo: a.TITULO ?? '',
+    cuerpo: a.CUERPO ?? '',
+    fechaPublicacion: a.FECHA_PUBLICACION != null ? String(a.FECHA_PUBLICACION) : '',
+    audiencia: a.AUDIENCIA ?? '',
+  };
+};
+
+// ============================================================================
+// Membresía API (CONTRACT-fase4-app.md §2.b / INT-4.1)
+// ============================================================================
+export const membresiaApi = {
+  // POST /membresia/status  body { dni } → { status, data }
+  getStatus: async (dni: string): Promise<Membresia> => {
+    const response = await api.post<{ status: string; data: any }>('/membresia/status', { dni });
+    return adaptMembresia(response.data.data);
+  },
+};
+
+// ============================================================================
+// Clases API (CONTRACT-fase4-app.md §2.b / INT-4.3) — ONLINE-FIRST.
+// ============================================================================
+export const clasesApi = {
+  // POST /clases/list  body { dni } → { status, data: [...] }. El dni SIEMPRE se
+  // manda para recibir yaReservada por clase.
+  getList: async (dni: string): Promise<Clase[]> => {
+    const response = await api.post<{ status: string; data: any[] }>('/clases/list', { dni });
+    return (response.data.data ?? []).map(adaptClase);
+  },
+
+  // POST /clases/reservar  body { dni, claseId } → { status, data:{ reservaId, estado } }.
+  // ONLINE-FIRST: lanza si falla (incluido 409 "Sin cupo"); el catch lo maneja la mutation.
+  reservar: async (dni: string, claseId: string): Promise<ReservaResultado> => {
+    const response = await api.post<{ status: string; data: ReservaResultado }>(
+      '/clases/reservar',
+      { dni, claseId }
+    );
+    return response.data.data;
+  },
+
+  // POST /clases/cancelar  body { dni, claseId } → { status, data:{ estado:"cancelada" } }.
+  cancelar: async (dni: string, claseId: string): Promise<ReservaResultado> => {
+    const response = await api.post<{ status: string; data: ReservaResultado }>(
+      '/clases/cancelar',
+      { dni, claseId }
+    );
+    return response.data.data;
+  },
+
+  // POST /clases/mis-reservas  body { dni } → { status, data: [...] }.
+  getMisReservas: async (dni: string): Promise<Reserva[]> => {
+    const response = await api.post<{ status: string; data: any[] }>('/clases/mis-reservas', {
+      dni,
+    });
+    return (response.data.data ?? []).map(adaptReserva);
+  },
+};
+
+// ============================================================================
+// Anuncios API (CONTRACT-fase4-app.md §2.b / INT-4.4)
+// ============================================================================
+export const anunciosApi = {
+  // POST /anuncios/list  body {} → { status, data: [...] }. NO se manda audiencia:
+  // el backend usa default "socios" (esta es la app de socios).
+  getList: async (): Promise<Anuncio[]> => {
+    const response = await api.post<{ status: string; data: any[] }>('/anuncios/list', {});
+    return (response.data.data ?? []).map(adaptAnuncio);
   },
 };
 

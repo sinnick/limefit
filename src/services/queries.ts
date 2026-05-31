@@ -10,6 +10,9 @@ import {
   ejerciciosApi,
   asistenciaApi,
   EjerciciosSearchParams,
+  membresiaApi,
+  clasesApi,
+  anunciosApi,
 } from './api';
 import { useUserStore } from '../store/userStore';
 import { useRutinasStore } from '../store/rutinasStore';
@@ -237,5 +240,81 @@ export const useAsistenciaQuery = (
     enabled: !!dni,
     staleTime: 5 * 60 * 1000,
     gcTime: 30 * 60 * 1000,
+  });
+};
+
+// ============ Fase 4 — Membresía / Clases / Anuncios ============
+//
+// (CONTRACT-fase4-app.md §3). SIN store: las pantallas consumen `data` directo de
+// React Query (igual que useEjerciciosQuery/useAsistenciaQuery). NO hay useEffect
+// de set al store. Las mutations reservar/cancelar son ONLINE-FIRST (sin syncQueue).
+
+// --- Lecturas ---
+
+export const useMembresiaQuery = (dni: string) =>
+  useQuery({
+    queryKey: [...QUERY_KEYS.MEMBRESIA, dni],
+    queryFn: () => membresiaApi.getStatus(dni),
+    enabled: !!dni,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+  });
+
+export const useClasesQuery = (dni: string) =>
+  useQuery({
+    queryKey: [...QUERY_KEYS.CLASES, dni],
+    queryFn: () => clasesApi.getList(dni),
+    enabled: !!dni,
+    staleTime: 2 * 60 * 1000, // corto: el cupo cambia seguido
+    gcTime: 30 * 60 * 1000,
+  });
+
+export const useMisReservasQuery = (dni: string) =>
+  useQuery({
+    queryKey: [...QUERY_KEYS.RESERVAS, dni],
+    queryFn: () => clasesApi.getMisReservas(dni),
+    enabled: !!dni,
+    staleTime: 2 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+  });
+
+export const useAnunciosQuery = () =>
+  useQuery({
+    queryKey: QUERY_KEYS.ANUNCIOS,
+    queryFn: () => anunciosApi.getList(),
+    staleTime: 10 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  });
+
+// --- Mutations (ONLINE-FIRST) ---
+// El DNI se lee del userStore dentro del hook (como useUpdateProfile). En onSuccess
+// invalidan CLASES + RESERVAS (sin el dni → invalida todas las variantes) para
+// refrescar cupo, badge yaReservada y la lista de mis-reservas. El manejo de error
+// (incluido el 409 "Sin cupo") lo hace la pantalla en onError de mutate/mutateAsync.
+
+export const useReservarClaseMutation = () => {
+  const queryClient = useQueryClient();
+  const dni = useUserStore((state) => state.user?.DNI) ?? '';
+
+  return useMutation({
+    mutationFn: (claseId: string) => clasesApi.reservar(dni, claseId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.CLASES });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.RESERVAS });
+    },
+  });
+};
+
+export const useCancelarReservaMutation = () => {
+  const queryClient = useQueryClient();
+  const dni = useUserStore((state) => state.user?.DNI) ?? '';
+
+  return useMutation({
+    mutationFn: (claseId: string) => clasesApi.cancelar(dni, claseId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.CLASES });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.RESERVAS });
+    },
   });
 };

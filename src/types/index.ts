@@ -203,6 +203,11 @@ export type RootStackParamList = {
   ScanQR: undefined;
   // Feature 2.4 (settings de recordatorios)
   Notificaciones: undefined;
+  // Feature 4.1 / 4.3 / 4.4
+  Membresia: undefined;
+  Clases: undefined;
+  MisReservas: undefined;
+  Anuncios: undefined;
 };
 
 export type MainTabParamList = {
@@ -324,4 +329,67 @@ export interface AsistenciaResponse {
   status: 'ok' | 'error';
   asistencias: Asistencia[];
   total: number;
+}
+
+// ============================================================================
+// Fase 4 — tipos nuevos (CONTRACT-fase4-app.md §1). Agregados al final, sin reordenar.
+// ============================================================================
+
+// --- 4.1 Membresía / estado de cuota (INT-4.1) ---------------------------
+// `estado` es un string crudo del backend (calcularEstadoCuota). Union ABIERTA
+// para tolerar valores no previstos; la pantalla mapea a etiqueta/color con default.
+export type EstadoCuota = 'al_dia' | 'vencido' | 'suspendida' | (string & {});
+
+export interface Membresia {
+  tieneMembresia: boolean;
+  estado?: EstadoCuota;     // solo si tieneMembresia
+  planNombre?: string;      // <- planNombre (ya camelCase)
+  fechaInicio?: string;     // <- fechaInicio (ISO)
+  fechaFin?: string;        // <- fechaFin (ISO)
+  diasRestantes?: number;   // <- diasRestantes (puede ser < 0)
+}
+
+// --- 4.3 Clase (INT-4.3) -------------------------------------------------
+export interface Clase {
+  id: string;            // <- _id
+  nombre: string;        // <- NOMBRE
+  instructor: string;    // <- INSTRUCTOR
+  diaSemana: DiaSemana;  // <- DIA_SEMANA (ya minúsculas)
+  hora: string;          // <- HORA
+  cupo: number;          // <- CUPO
+  cupoOcupado: number;   // <- cupoOcupado
+  cupoDisponible: number;// <- cupoDisponible
+  proximoDictado: string;// <- proximoDictado (ISO)
+  yaReservada?: boolean; // <- yaReservada (undefined si no se mandó dni)
+}
+
+// --- 4.3 Reserva (mis reservas + resultado de reservar/cancelar) ----------
+export type EstadoReserva = 'reservada' | 'cancelada';
+
+export interface Reserva {
+  reservaId: string;          // <- reservaId
+  claseId: string;            // <- claseId
+  fecha: string;              // <- FECHA (ISO)
+  estado: EstadoReserva;      // <- estado
+  clase?: {                   // <- clase (puede ser null → omitir)
+    nombre: string;           // <- NOMBRE
+    instructor: string;       // <- INSTRUCTOR
+    diaSemana: DiaSemana;     // <- DIA_SEMANA
+    hora: string;             // <- HORA
+  };
+}
+
+// Resultado liviano de las mutations reservar/cancelar (no se persiste; UI/toast).
+export interface ReservaResultado {
+  reservaId?: string;         // presente solo en reservar
+  estado: EstadoReserva;      // "reservada" | "cancelada"
+}
+
+// --- 4.4 Anuncio (INT-4.4) -----------------------------------------------
+export interface Anuncio {
+  id: string;                // <- _id
+  titulo: string;            // <- TITULO
+  cuerpo: string;            // <- CUERPO
+  fechaPublicacion: string;  // <- FECHA_PUBLICACION (ISO)
+  audiencia: string;         // <- AUDIENCIA
 }

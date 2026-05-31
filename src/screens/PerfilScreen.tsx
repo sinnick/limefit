@@ -17,6 +17,7 @@ import { useUser, useUserStore, useSettings } from '../store/userStore';
 import { useHistorialWorkouts } from '../store/workoutStore';
 import { useRecords } from '../store/recordsStore';
 import { calcularLogros } from '../utils/achievements';
+import { useMembresiaQuery } from '../services/queries';
 import { Card, Button } from '../components/ui';
 
 interface PerfilScreenProps {
@@ -103,6 +104,19 @@ export const PerfilScreen: React.FC<PerfilScreenProps> = ({ navigation }) => {
     [historial, records]
   );
 
+  // Membresía (4.1) — resumen del estado de cuota para la sección "Mi membresía".
+  const { data: membresia, isLoading: loadingMembresia } = useMembresiaQuery(user?.DNI ?? '');
+  const membresiaResumen = (): string => {
+    if (loadingMembresia) return 'Cargando...';
+    if (!membresia || !membresia.tieneMembresia) return 'Sin membresía activa';
+    if (membresia.estado === 'al_dia') {
+      return `Al día · vence en ${membresia.diasRestantes ?? 0} días`;
+    }
+    if (membresia.estado === 'vencido') return 'Vencida';
+    if (membresia.estado === 'suspendida') return 'Suspendida';
+    return membresia.estado ?? '';
+  };
+
   // Stats
   const totalWorkouts = historial.length;
   const totalVolumen = historial.reduce((acc, w) => acc + w.volumenTotal, 0);
@@ -183,6 +197,19 @@ export const PerfilScreen: React.FC<PerfilScreenProps> = ({ navigation }) => {
               title="Recordatorios"
               value="Avisos de entrenamiento"
               onPress={() => navigation.navigate('Notificaciones')}
+            />
+          </Card>
+        </AnimatedSection>
+
+        {/* Mi membresía (4.1) */}
+        <AnimatedSection delay={280}>
+          <Text style={styles.sectionTitle}>Mi membresía</Text>
+          <Card variant="default" padding="none">
+            <SettingItem
+              icon="card-outline"
+              title="Estado de cuota"
+              value={membresiaResumen()}
+              onPress={() => navigation.navigate('Membresia')}
             />
           </Card>
         </AnimatedSection>
