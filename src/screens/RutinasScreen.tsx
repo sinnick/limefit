@@ -111,14 +111,18 @@ const RutinaCard: React.FC<RutinaCardProps> = ({ rutina, index, onPress }) => {
 };
 
 export const RutinasScreen: React.FC<RutinasScreenProps> = ({ navigation }) => {
+  // El store guarda las rutinas ASIGNADAS al socio (CONTRACT b.2). useRutinasQuery
+  // las trae con rutinasApi.getMisRutinasAsignadas(dni) y las vuelca al store.
   const rutinas = useRutinas();
-  const { isLoading, refetch, isRefetching } = useRutinasQuery();
+  const { isLoading, isError, refetch, isRefetching } = useRutinasQuery();
 
   const handleRutinaPress = (rutina: Rutina) => {
     navigation.navigate('Rutina', { rutina });
   };
 
-  if (isLoading) {
+  // Carga: solo cuando la query está pidiendo y todavía no hay nada cacheado en
+  // MMKV (evita mostrar rutinas del socio anterior mientras llega la respuesta).
+  if (isLoading && rutinas.length === 0) {
     return <Loading fullScreen message="Cargando rutinas..." />;
   }
 
@@ -126,7 +130,7 @@ export const RutinasScreen: React.FC<RutinasScreenProps> = ({ navigation }) => {
     <View style={styles.container}>
       <UserHeader
         title="Mis Rutinas"
-        subtitle={`${rutinas.length} rutinas disponibles`}
+        subtitle={`${rutinas.length} rutinas asignadas`}
         showSettings={false}
       />
 
@@ -137,11 +141,19 @@ export const RutinasScreen: React.FC<RutinasScreenProps> = ({ navigation }) => {
         <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
       </TouchableOpacity>
 
-      {rutinas.length === 0 ? (
+      {isError && rutinas.length === 0 ? (
+        <EmptyState
+          icon="cloud-offline-outline"
+          title="No pudimos cargar tus rutinas"
+          description="Revisá tu conexión e intentá de nuevo."
+          actionLabel="Reintentar"
+          onAction={() => refetch()}
+        />
+      ) : rutinas.length === 0 ? (
         <EmptyState
           icon="barbell-outline"
           title="No tienes rutinas"
-          description="Aún no se han creado rutinas para ti. Contacta al gimnasio para que te asignen una."
+          description="Aún no se te ha asignado ninguna rutina. Contacta al gimnasio para que te asignen una."
         />
       ) : (
         <FlashList
