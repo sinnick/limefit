@@ -13,7 +13,9 @@ const BRANDS: Record<string, BrandConfig> = {
 
 // Logos de imagen (require de assets) — no representables en JSON; opcional por marca.
 // Si una marca tiene logo de imagen, agregá: levelgym: require('./levelgym/assets/logo.png')
-const LOGO_IMAGES: Record<string, number> = {};
+const LOGO_IMAGES: Record<string, number> = {
+  levelgym: require('./levelgym/assets/logo.png'),
+};
 
 // Assets de fuentes por marca (require de .ttf). Las keys deben coincidir con
 // los nombres de familia en brand.json -> fontFamily. Se cargan en App.tsx.

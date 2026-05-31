@@ -91,14 +91,17 @@ export const LoginScreen: React.FC = () => {
       >
         {/* Logo Section */}
         <Animated.View style={[styles.logoContainer, { transform: [{ scale: logoScale }] }]}>
-          <View style={styles.logoWrapper}>
-            {activeBrand.logoImage ? (
-              <Image source={activeBrand.logoImage} style={styles.logoImage} resizeMode="contain" />
-            ) : (
-              <Text style={styles.logoIcon}>{activeBrand.logoEmoji}</Text>
-            )}
-          </View>
-          <Text style={styles.logoText}>{APP_CONFIG.name.toUpperCase()}</Text>
+          {activeBrand.logoImage ? (
+            // Marca con wordmark propio: el logo reemplaza al badge + nombre de texto.
+            <Image source={activeBrand.logoImage} style={styles.logoBanner} resizeMode="contain" />
+          ) : (
+            <>
+              <View style={styles.logoWrapper}>
+                <Text style={styles.logoIcon}>{activeBrand.logoEmoji}</Text>
+              </View>
+              <Text style={styles.logoText}>{APP_CONFIG.name.toUpperCase()}</Text>
+            </>
+          )}
           <Text style={styles.tagline}>{activeBrand.tagline}</Text>
         </Animated.View>
 
@@ -178,9 +181,10 @@ const styles = StyleSheet.create({
   logoIcon: {
     fontSize: 48,
   },
-  logoImage: {
-    width: 72,
-    height: 72,
+  logoBanner: {
+    width: 260,
+    height: 114,
+    marginBottom: 8,
   },
   logoText: {
     fontFamily: fontFamily.bold,
