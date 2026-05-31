@@ -22,11 +22,14 @@ import {
   RecordsScreen,
   HistorialScreen,
   PerfilScreen,
-  RecordDetailScreen,
-  MetricasScreen,
-  CalendarioScreen,
-  EditarPerfilScreen,
 } from './src/screens';
+// Pantallas de Fase 1 por import default DIRECTO (no vía el barrel): importarlas
+// del barrel creaba un ciclo de evaluación que las dejaba undefined en runtime
+// (React Navigation: "Couldn't find a component for screen 'RecordDetail'").
+import RecordDetailScreen from './src/screens/RecordDetailScreen';
+import MetricasScreen from './src/screens/MetricasScreen';
+import CalendarioScreen from './src/screens/CalendarioScreen';
+import EditarPerfilScreen from './src/screens/EditarPerfilScreen';
 
 // Providers
 import { ToastProvider } from './src/components/ui/Toast';
