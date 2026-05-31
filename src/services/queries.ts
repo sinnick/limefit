@@ -4,7 +4,7 @@ import { authApi, rutinasApi, recordsApi } from './api';
 import { useUserStore } from '../store/userStore';
 import { useRutinasStore } from '../store/rutinasStore';
 import { useRecordsStore } from '../store/recordsStore';
-import { Rutina, Record } from '../types';
+import { Rutina } from '../types';
 
 // ============ Auth Queries ============
 
@@ -18,7 +18,9 @@ export const useLogin = () => {
       return authApi.login(dni);
     },
     onSuccess: (user) => {
-      setUser(user);
+      // El backend puede devolver user: null si el DNI no existe (CONTRACT b.1).
+      if (user) setUser(user);
+      else setLoading(false);
     },
     onError: () => {
       setLoading(false);
@@ -28,12 +30,18 @@ export const useLogin = () => {
 
 // ============ Rutinas Queries ============
 
+// CONTRACT b.2 — el flujo del socio trae SOLO sus rutinas asignadas y activas
+// vía POST /mis-rutinas con el DNI del usuario logueado (no todas las del gym).
+// La firma sin args se mantiene para no romper los call sites (InicioScreen,
+// RutinasScreen); el DNI se lee del userStore.
 export const useRutinasQuery = () => {
   const setRutinas = useRutinasStore((state) => state.setRutinas);
+  const dni = useUserStore((state) => state.user?.DNI) ?? '';
 
   return useQuery({
-    queryKey: QUERY_KEYS.RUTINAS,
-    queryFn: rutinasApi.getAll,
+    queryKey: [...QUERY_KEYS.RUTINAS, dni],
+    queryFn: () => rutinasApi.getMisRutinasAsignadas(dni),
+    enabled: !!dni,
     staleTime: 5 * 60 * 1000, // 5 minutos
     gcTime: 30 * 60 * 1000, // 30 minutos (antes cacheTime)
     refetchOnWindowFocus: false,
@@ -94,12 +102,18 @@ export const useDeleteRutina = () => {
 };
 
 // ============ Records Queries ============
+//
+// NOTA (CONTRACT b.3 / c): las ESCRITURAS de records y workouts ya NO pasan por
+// React Query. Son offline-first: se guardan local (MMKV) y se suben con la cola
+// de sync (syncStore) vía recordsApi.subirRecords / workoutsApi.subirWorkouts.
+// Por eso acá quedan SOLO las LECTURAS. Las antiguas mutaciones de records
+// (create/update/delete contra /records inexistente) se eliminaron.
 
 export const useRecordsQuery = (dni: string) => {
   const setRecords = useRecordsStore((state) => state.setRecords);
 
   return useQuery({
-    queryKey: QUERY_KEYS.RECORDS,
+    queryKey: [...QUERY_KEYS.RECORDS, dni],
     queryFn: () => recordsApi.getByUser(dni),
     enabled: !!dni,
     staleTime: 5 * 60 * 1000,
@@ -117,45 +131,5 @@ export const useRecordsByEjercicio = (dni: string, ejercicioId: string) => {
     queryFn: () => recordsApi.getByEjercicio(dni, ejercicioId),
     enabled: !!dni && !!ejercicioId,
     staleTime: 5 * 60 * 1000,
-  });
-};
-
-export const useCreateRecord = () => {
-  const queryClient = useQueryClient();
-  const addRecord = useRecordsStore((state) => state.addRecord);
-
-  return useMutation({
-    mutationFn: (record: Omit<Record, 'id'>) => recordsApi.create(record),
-    onSuccess: (newRecord) => {
-      addRecord(newRecord);
-      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.RECORDS });
-    },
-  });
-};
-
-export const useUpdateRecord = () => {
-  const queryClient = useQueryClient();
-  const updateRecord = useRecordsStore((state) => state.updateRecord);
-
-  return useMutation({
-    mutationFn: ({ id, record }: { id: string; record: Partial<Record> }) =>
-      recordsApi.update(id, record),
-    onSuccess: (updatedRecord) => {
-      updateRecord(updatedRecord.id || updatedRecord._id || '', updatedRecord);
-      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.RECORDS });
-    },
-  });
-};
-
-export const useDeleteRecord = () => {
-  const queryClient = useQueryClient();
-  const deleteRecord = useRecordsStore((state) => state.deleteRecord);
-
-  return useMutation({
-    mutationFn: (id: string) => recordsApi.delete(id),
-    onSuccess: (_, id) => {
-      deleteRecord(id);
-      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.RECORDS });
-    },
   });
 };

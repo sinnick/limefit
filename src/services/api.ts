@@ -1,41 +1,107 @@
 import axios, { AxiosError, AxiosInstance } from 'axios';
 import { API_BASE_URL, TENANT_ID } from '../constants/config';
 import {
-  ApiResponse,
   LoginResponse,
   RutinasResponse,
   RecordsResponse,
   User,
   Rutina,
   Record,
+  WorkoutCompletado,
   DiaRutina,
   EjercicioEnRutina,
   DiaSemana,
 } from '../types';
 
-// El backend usa un esquema plano en MAYÚSCULAS (NOMBRE, DESCRIPCION, DURACION,
-// DIAS: [String] con nombres de día, EJERCICIOS: [{nombre,series,repeticiones,descanso,peso,notas}]).
-// La app espera Rutina con dias[].ejercicios[] en camelCase. Este adaptador traduce.
-// Es defensivo: si la respuesta ya viene en el formato de la app, la deja igual.
+// ============================================================================
+// Adaptador de Rutina — puente de naming entre backend y app (CONTRACT a.3).
+//
+// Backend (MAYÚSCULAS a nivel raíz, camelCase en subdocumentos anidados):
+//   { _id, ID, NOMBRE, DESCRIPCION, DURACION, DIFICULTAD, NIVEL, HABILITADA,
+//     DIAS: [{ diaId, nombre, orden, ejercicios: [{ ejercicioId, nombre, series,
+//       repeticiones, descanso, peso (Number), unidadPeso, notas, orden }] }],
+//     DIAS_SEMANA: [String], EJERCICIOS: [] (legacy),
+//     FECHA_CREACION, FECHA_MODIFICACION, GYM_ID }
+//
+// App (camelCase): Rutina con dias[].ejercicios[].
+//
+// Este adaptador es la ÚNICA fuente de verdad de la traducción y es BIDIRECCIONAL:
+//   adaptRutina      backend → app (detecta formato nuevo anidado vs. legacy)
+//   toBackendRutina  app → backend (para POST/PUT)
+// ============================================================================
+
+// Backend → App: mapea un ejercicio anidado del nuevo formato (DIAS[].ejercicios[]).
+const adaptEjercicio = (e: any): EjercicioEnRutina => {
+  // En el formato nuevo el id estable lo da ejercicioId (ya no se fabrica).
+  const ejercicioId: string = e?.ejercicioId ?? '';
+  return {
+    id: ejercicioId,
+    ejercicioId,
+    nombre: e?.nombre ?? '',
+    sets: e?.series ?? 0,
+    reps: e?.repeticiones ?? 0,
+    // peso ya es Number en el backend nuevo; "" / null → undefined.
+    peso: e?.peso != null && e.peso !== '' ? Number(e.peso) : undefined,
+    unidadPeso: e?.unidadPeso ?? undefined,
+    notas: e?.notas || undefined,
+    descanso: e?.descanso,
+    orden: e?.orden,
+  };
+};
+
+// Backend → App (formato LEGACY): EJERCICIOS[] plano con peso String ("20kg").
+// Se usa solo mientras la migración no corrió (DIAS array de strings + EJERCICIOS).
+const adaptEjercicioLegacy = (id: string, e: any, i: number): EjercicioEnRutina => ({
+  id: `${id}-ej-${i}`,
+  ejercicioId: `${id}-ej-${i}`,
+  nombre: e?.nombre ?? '',
+  sets: e?.series ?? 0,
+  reps: e?.repeticiones ?? 0,
+  peso: e?.peso != null && e.peso !== '' ? parseFloat(String(e.peso)) || undefined : undefined,
+  notas: e?.notas || undefined,
+  descanso: e?.descanso,
+  orden: i,
+});
+
 const adaptRutina = (r: any): Rutina => {
+  // Si ya viene en formato de app (tiene dias[]), pasar tal cual (defensivo).
   if (!r || Array.isArray(r.dias)) return r as Rutina;
 
   const id: string = r._id ?? (r.ID != null ? String(r.ID) : '');
 
-  const ejercicios: EjercicioEnRutina[] = (r.EJERCICIOS ?? []).map((e: any, i: number) => ({
-    id: `${id}-ej-${i}`,
-    ejercicioId: `${id}-ej-${i}`,
-    nombre: e?.nombre ?? '',
-    sets: e?.series ?? 0,
-    reps: e?.repeticiones ?? 0,
-    peso: e?.peso != null && e.peso !== '' ? parseFloat(String(e.peso)) || undefined : undefined,
-    notas: e?.notas || undefined,
-    descanso: e?.descanso,
-  }));
+  // Detección de formato (CONTRACT a.3): el formato nuevo trae DIAS como array de
+  // objetos (días-con-ejercicios). El legacy trae DIAS como array de strings
+  // (nombres de día de la semana) + EJERCICIOS[] plano.
+  const diasRaw = r.DIAS;
+  const esFormatoNuevo =
+    Array.isArray(diasRaw) && diasRaw.length > 0 && typeof diasRaw[0] === 'object';
 
-  // El backend no separa ejercicios por día: agrupamos todos en un único día.
-  const dias: DiaRutina[] =
-    ejercicios.length > 0 ? [{ id: `${id}-dia-0`, nombre: 'Entrenamiento', ejercicios }] : [];
+  let dias: DiaRutina[];
+  let diasSemana: DiaSemana[] | undefined;
+
+  if (esFormatoNuevo) {
+    // Mapeo directo: cada día con sus ejercicios anidados.
+    dias = diasRaw.map((d: any) => ({
+      id: d?.diaId ?? '',
+      nombre: d?.nombre ?? '',
+      orden: d?.orden,
+      ejercicios: (d?.ejercicios ?? []).map(adaptEjercicio),
+    }));
+    // Los días de la semana viven en DIAS_SEMANA en el formato nuevo.
+    diasSemana = Array.isArray(r.DIAS_SEMANA)
+      ? (r.DIAS_SEMANA.map((d: any) => String(d).toLowerCase()) as DiaSemana[])
+      : undefined;
+  } else {
+    // LEGACY: agrupar todo EJERCICIOS[] en un único día "Día 1".
+    const ejercicios = (r.EJERCICIOS ?? []).map((e: any, i: number) =>
+      adaptEjercicioLegacy(id, e, i)
+    );
+    dias = ejercicios.length > 0 ? [{ id: `${id}-dia-0`, nombre: 'Día 1', orden: 0, ejercicios }] : [];
+    // En legacy los nombres de día de la semana viven en DIAS (array de strings).
+    diasSemana = Array.isArray(diasRaw)
+      ? (diasRaw.map((d: any) => String(d).toLowerCase()) as DiaSemana[])
+      : undefined;
+  }
 
   return {
     id,
@@ -43,17 +109,54 @@ const adaptRutina = (r: any): Rutina => {
     nombre: r.NOMBRE ?? '',
     descripcion: r.DESCRIPCION || undefined,
     dias,
-    // DIAS (nombres de día de la semana) → diasSemana.
-    diasSemana: Array.isArray(r.DIAS)
-      ? (r.DIAS.map((d: any) => String(d).toLowerCase()) as DiaSemana[])
-      : undefined,
+    diasSemana,
     tiempoEstimado: r.DURACION,
     createdAt: r.FECHA_CREACION,
     updatedAt: r.FECHA_MODIFICACION,
   };
 };
 
-// Crear instancia de axios
+// App → Backend (CONTRACT a.3): invierte adaptRutina para POST/PUT de rutinas.
+// Respeta diaId/ejercicioId si vienen; si faltan, el backend los genera al guardar.
+// (Nota: usamos un index signature inline porque el nombre `Record` está ocupado
+//  por el tipo de dominio importado de ../types, no por el utility type de TS.)
+const toBackendRutina = (rutina: Partial<Rutina>): { [k: string]: any } => {
+  const out: { [k: string]: any } = {};
+
+  if (rutina.nombre !== undefined) out.NOMBRE = rutina.nombre;
+  if (rutina.descripcion !== undefined) out.DESCRIPCION = rutina.descripcion ?? '';
+  if (rutina.tiempoEstimado !== undefined) out.DURACION = rutina.tiempoEstimado;
+
+  if (rutina.dias !== undefined) {
+    out.DIAS = (rutina.dias ?? []).map((d, di) => ({
+      // Solo enviar diaId si ya existe (estable). Si falta, el backend lo genera.
+      ...(d.id ? { diaId: d.id } : {}),
+      nombre: d.nombre ?? `Día ${di + 1}`,
+      orden: d.orden ?? di,
+      ejercicios: (d.ejercicios ?? []).map((e, ei) => ({
+        ...(e.ejercicioId ? { ejercicioId: e.ejercicioId } : {}),
+        nombre: e.nombre ?? '',
+        series: e.sets ?? 0,
+        repeticiones: e.reps ?? 0,
+        descanso: e.descanso ?? 60,
+        peso: e.peso ?? null,
+        unidadPeso: e.unidadPeso ?? 'kg',
+        notas: e.notas ?? '',
+        orden: e.orden ?? ei,
+      })),
+    }));
+  }
+
+  if (rutina.diasSemana !== undefined) {
+    out.DIAS_SEMANA = (rutina.diasSemana ?? []).map((d) => String(d).toLowerCase());
+  }
+
+  return out;
+};
+
+// ============================================================================
+// Instancia axios — base URL configurable (EXPO_PUBLIC_API_URL) + header X-Brand.
+// ============================================================================
 const api: AxiosInstance = axios.create({
   baseURL: API_BASE_URL,
   timeout: 10000,
@@ -87,34 +190,47 @@ api.interceptors.response.use(
   }
 );
 
-// Auth API
+// ============================================================================
+// Auth API — login solo por DNI (CONTRACT b.1). Respuesta: { status, user }.
+// ============================================================================
 export const authApi = {
-  login: async (dni: string): Promise<User> => {
+  login: async (dni: string): Promise<User | null> => {
     const response = await api.post<LoginResponse>('/login', { dni });
     return response.data.user;
   },
 };
 
+// ============================================================================
 // Rutinas API
+// ============================================================================
 export const rutinasApi = {
+  // CONTRACT b.2 — Mis rutinas asignadas: POST /mis-rutinas con { dni }.
+  // Reemplaza al GET /rutinas para el flujo del socio (trae SOLO las asignadas).
+  getMisRutinasAsignadas: async (dni: string): Promise<Rutina[]> => {
+    const response = await api.post<RutinasResponse>('/mis-rutinas', { dni });
+    return (response.data.result_rutinas ?? []).map(adaptRutina);
+  },
+
+  // Compat: GET /rutinas (todas las del gym). Se mantiene pero la app del socio
+  // ya no lo usa para su flujo.
   getAll: async (): Promise<Rutina[]> => {
     const response = await api.get<RutinasResponse>('/rutinas');
     return (response.data.result_rutinas ?? []).map(adaptRutina);
   },
 
   getById: async (id: string): Promise<Rutina> => {
-    const response = await api.get<{ rutina: Rutina }>(`/rutinas/${id}`);
+    const response = await api.get<{ rutina: any }>(`/rutinas/${id}`);
     return adaptRutina(response.data.rutina);
   },
 
   create: async (rutina: Omit<Rutina, 'id'>): Promise<Rutina> => {
-    const response = await api.post<{ rutina: Rutina }>('/rutinas', rutina);
-    return response.data.rutina;
+    const response = await api.post<{ rutina: any }>('/rutinas', toBackendRutina(rutina));
+    return adaptRutina(response.data.rutina);
   },
 
   update: async (id: string, rutina: Partial<Rutina>): Promise<Rutina> => {
-    const response = await api.put<{ rutina: Rutina }>(`/rutinas/${id}`, rutina);
-    return response.data.rutina;
+    const response = await api.put<{ rutina: any }>(`/rutinas/${id}`, toBackendRutina(rutina));
+    return adaptRutina(response.data.rutina);
   },
 
   delete: async (id: string): Promise<void> => {
@@ -122,53 +238,133 @@ export const rutinasApi = {
   },
 };
 
-// El backend devuelve records con campos en MAYÚSCULAS (DNI, EJERCICIO, PESO, FECHA)
-// y sin reps/notas. La app espera { ejercicioNombre, ejercicioId, peso, reps, fecha, ... }.
+// ============================================================================
+// Adaptador de Record — backend (MAYÚSCULAS) ↔ app (camelCase) (CONTRACT b.3).
+// ============================================================================
 const adaptRecord = (r: any): Record => {
   if (!r || r.ejercicioNombre !== undefined) return r as Record;
   const nombre = r.EJERCICIO ?? '';
   return {
-    id: r._id ?? `${r.DNI}-${nombre}-${r.FECHA}`,
+    id: r._id ?? r.CLIENT_ID ?? `${r.DNI}-${nombre}-${r.FECHA}`,
     _id: r._id,
+    clientId: r.CLIENT_ID || undefined,
     dni: r.DNI != null ? String(r.DNI) : '',
-    ejercicioId: nombre, // el backend no tiene id de ejercicio; usamos el nombre
+    ejercicioId: r.EJERCICIO_ID || nombre, // fallback al nombre si no hay id estable
     ejercicioNombre: nombre,
     peso: r.PESO ?? 0,
-    reps: r.REPS ?? 0, // el backend no guarda reps
+    reps: r.REPS ?? 0,
     fecha: r.FECHA ?? new Date().toISOString(),
     notas: r.NOTAS || undefined,
+    esRecord: r.ES_RECORD ?? undefined,
   };
 };
 
+// App → request: un Record local al payload del batch de records (CONTRACT b.3).
+// El clientId es la clave de idempotencia: usa record.clientId o, si falta, record.id.
+const recordToBatchItem = (record: Record) => ({
+  clientId: record.clientId ?? record.id,
+  ejercicioId: record.ejercicioId,
+  ejercicioNombre: record.ejercicioNombre,
+  peso: record.peso,
+  reps: record.reps,
+  fecha: record.fecha,
+  notas: record.notas ?? '',
+  esRecord: record.esRecord ?? false,
+});
+
+// App → request: un WorkoutCompletado local al payload del batch de workouts
+// (CONTRACT b.4). El clientId es el id ya generado por workoutStore.
+const workoutToBatchItem = (workout: WorkoutCompletado) => ({
+  clientId: workout.id,
+  rutinaId: workout.rutinaId,
+  rutinaNombre: workout.rutinaNombre,
+  diaId: workout.diaId,
+  diaNombre: workout.diaNombre,
+  fecha: workout.fecha,
+  duracion: workout.duracion,
+  volumenTotal: workout.volumenTotal,
+  prsLogrados: workout.prsLogrados,
+  notas: workout.notas ?? '',
+  ejercicios: workout.ejercicios.map((e) => ({
+    ejercicioId: e.ejercicioId,
+    nombre: e.nombre,
+    setsObjetivo: e.setsObjetivo,
+    repsObjetivo: e.repsObjetivo,
+    pesoObjetivo: e.pesoObjetivo,
+    completado: e.completado,
+    setsCompletados: e.setsCompletados.map((s) => ({
+      setNumero: s.setNumero,
+      peso: s.peso,
+      reps: s.reps,
+      completado: s.completado,
+      timestamp: s.timestamp,
+      esRecord: s.esRecord ?? false,
+    })),
+  })),
+});
+
+// Resultado por item del batch, alineado 1:1 por clientId (CONTRACT b.3/b.4).
+export interface SyncBatchResult {
+  clientId: string;
+  ok: boolean;
+  _id?: string;
+  created?: boolean;
+  error?: string;
+}
+
+interface SyncBatchResponse {
+  status: string;
+  results: SyncBatchResult[];
+}
+
+// ============================================================================
 // Records API
+// ============================================================================
 export const recordsApi = {
   getByUser: async (dni: string): Promise<Record[]> => {
     const response = await api.post<RecordsResponse>('/records/list', { dni });
     return (response.data.result_records ?? []).map(adaptRecord);
   },
 
-  create: async (record: Omit<Record, 'id'>): Promise<Record> => {
-    const response = await api.post<{ record: Record }>('/records', record);
-    return response.data.record;
-  },
-
-  update: async (id: string, record: Partial<Record>): Promise<Record> => {
-    const response = await api.put<{ record: Record }>(`/records/${id}`, record);
-    return response.data.record;
-  },
-
-  delete: async (id: string): Promise<void> => {
-    await api.delete(`/records/${id}`);
-  },
-
   getByEjercicio: async (dni: string, ejercicioId: string): Promise<Record[]> => {
-    const response = await api.post<{ records: Record[] }>('/records/ejercicio', {
+    const response = await api.post<{ records: any[] }>('/records/ejercicio', {
       dni,
       ejercicioId,
     });
     return (response.data.records ?? []).map(adaptRecord);
   },
+
+  // CONTRACT b.3 — Subir records en batch (idempotente por clientId).
+  // Consume la cola de sync; reenviar el mismo lote NO duplica (upsert backend).
+  subirRecords: async (dni: string, batch: Record[]): Promise<SyncBatchResult[]> => {
+    const response = await api.post<SyncBatchResponse>('/records/batch', {
+      dni,
+      records: batch.map(recordToBatchItem),
+    });
+    return response.data.results ?? [];
+  },
 };
+
+// ============================================================================
+// Workouts API (CONTRACT b.4)
+// ============================================================================
+export const workoutsApi = {
+  // Subir workouts completados en batch (idempotente por clientId).
+  subirWorkouts: async (
+    dni: string,
+    batch: WorkoutCompletado[]
+  ): Promise<SyncBatchResult[]> => {
+    const response = await api.post<SyncBatchResponse>('/workouts/batch', {
+      dni,
+      workouts: batch.map(workoutToBatchItem),
+    });
+    return response.data.results ?? [];
+  },
+};
+
+// Export del adaptador app→backend por si la UI admin lo necesita fuera de los
+// helpers de rutinasApi (es el único puente de traducción, ver CONTRACT a.3).
+export { toBackendRutina, adaptRutina };
 
 // Export default instance
 export default api;

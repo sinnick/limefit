@@ -32,6 +32,8 @@ export const STORAGE_KEYS = {
   RECORDS_CACHE: `${KEY_PREFIX}records`,
   WORKOUT_PROGRESS: `${KEY_PREFIX}workout_progress`,
   SETTINGS: `${KEY_PREFIX}settings`,
+  // Cola de sync offline-first (CONTRACT c.2). Persistida en MMKV por marca.
+  SYNC_QUEUE: `${KEY_PREFIX}sync_queue`,
 } as const;
 
 // Query Keys for React Query

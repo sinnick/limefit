@@ -26,8 +26,10 @@ export interface EjercicioEnRutina {
   sets: number;
   reps: number;
   peso?: number;
+  unidadPeso?: 'kg' | 'lb'; // refleja backend unidadPeso (default "kg")
   notas?: string;
   descanso?: number; // segundos
+  orden?: number; // orden del ejercicio dentro del día (backend orden)
   completado?: boolean;
 }
 
@@ -58,6 +60,7 @@ export type Dificultad = 'principiante' | 'intermedio' | 'avanzado';
 export interface DiaRutina {
   id: string;
   nombre: string;
+  orden?: number; // orden del día dentro de la rutina (backend orden)
   ejercicios: EjercicioEnRutina[];
 }
 
@@ -79,6 +82,7 @@ export type DiaSemana = 'lunes' | 'martes' | 'miercoles' | 'jueves' | 'viernes' 
 export interface Record {
   id: string;
   _id?: string;
+  clientId?: string; // clave de idempotencia para la cola de sync (= id local). CLIENT_ID en backend
   dni: string;
   ejercicioId: string;
   ejercicioNombre: string;
@@ -86,6 +90,7 @@ export interface Record {
   reps: number;
   fecha: string;
   notas?: string;
+  esRecord?: boolean; // ES_RECORD en backend; la app detecta el PR localmente
 }
 
 export interface PersonalRecord {
@@ -163,7 +168,7 @@ export interface ApiResponse<T> {
 }
 
 export interface LoginResponse {
-  user: User;
+  user: User | null; // null si el DNI no existe (CONTRACT b.1)
 }
 
 export interface RutinasResponse {
