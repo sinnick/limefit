@@ -41,7 +41,7 @@ for (const key of Object.keys(BRANDS)) {
   if (FONT_ASSETS[key]) BRANDS[key].fontAssets = FONT_ASSETS[key];
 }
 
-export const DEFAULT_BRAND = 'limefit';
+export const DEFAULT_BRAND = 'levelgym';
 
 // Runtime/JS. Metro inlinea EXPO_PUBLIC_BRAND como string literal en build,
 // por eso cambiar de marca exige reiniciar Metro con --clear.
