@@ -1,10 +1,10 @@
-import { MMKV } from 'react-native-mmkv';
+import { createMMKV } from 'react-native-mmkv';
 import { StateStorage } from 'zustand/middleware';
 import { activeBrand } from '../../brands/registry';
 
-// Crear instancia de MMKV — id por marca para aislar el storage entre marcas.
+// Crear instancia de MMKV (v4 / Nitro) — id por marca para aislar el storage entre marcas.
 // Para 'limefit' el id sigue siendo 'limefit-storage' (se preserva el storage existente).
-export const storage = new MMKV({
+export const storage = createMMKV({
   id: `${activeBrand.key}-storage`,
 });
 
@@ -18,7 +18,7 @@ export const zustandStorage: StateStorage = {
     return value ?? null;
   },
   removeItem: (name) => {
-    return storage.delete(name);
+    return storage.remove(name);
   },
 };
 
@@ -42,7 +42,9 @@ export const mmkvStorage = {
   setObject: <T>(key: string, value: T): void => {
     storage.set(key, JSON.stringify(value));
   },
-  delete: (key: string): void => storage.delete(key),
+  delete: (key: string): void => {
+    storage.remove(key);
+  },
   clearAll: (): void => storage.clearAll(),
   getAllKeys: (): string[] => storage.getAllKeys(),
 };
