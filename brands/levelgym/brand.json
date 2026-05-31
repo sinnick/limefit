@@ -3,7 +3,7 @@
   "appName": "Level Gym",
   "tagline": "Subí al próximo level",
   "logoEmoji": "🏋️",
-  "tenantId": "levelgym",
+  "tenantId": "level",
   "native": {
     "name": "levelgym",
     "slug": "levelgym",
