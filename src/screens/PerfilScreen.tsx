@@ -7,6 +7,7 @@ import {
   ScrollView,
   Image,
   Animated,
+  Switch,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -14,6 +15,8 @@ import { colors, fontFamily, shadows } from '../constants/theme';
 import { RootStackParamList } from '../types';
 import { useUser, useUserStore, useSettings } from '../store/userStore';
 import { useHistorialWorkouts } from '../store/workoutStore';
+import { useRecords } from '../store/recordsStore';
+import { calcularLogros } from '../utils/achievements';
 import { Card, Button } from '../components/ui';
 
 interface PerfilScreenProps {
@@ -89,8 +92,16 @@ const AnimatedSection: React.FC<AnimatedSectionProps> = ({ children, delay }) =>
 export const PerfilScreen: React.FC<PerfilScreenProps> = ({ navigation }) => {
   const user = useUser();
   const logout = useUserStore((state) => state.logout);
+  const updateSettings = useUserStore((state) => state.updateSettings);
   const settings = useSettings();
   const historial = useHistorialWorkouts();
+  const records = useRecords();
+
+  // Logros (1.4) — mismos hitos que en InicioScreen, sección dedicada acá.
+  const logros = React.useMemo(
+    () => calcularLogros(historial, records),
+    [historial, records]
+  );
 
   // Stats
   const totalWorkouts = historial.length;
@@ -157,6 +168,19 @@ export const PerfilScreen: React.FC<PerfilScreenProps> = ({ navigation }) => {
           </View>
         </AnimatedSection>
 
+        {/* Editar perfil (1.5) */}
+        <AnimatedSection delay={250}>
+          <Text style={styles.sectionTitle}>Mi cuenta</Text>
+          <Card variant="default" padding="none">
+            <SettingItem
+              icon="create-outline"
+              title="Editar perfil"
+              value="Nombre, email, foto y objetivos"
+              onPress={() => navigation.navigate('EditarPerfil')}
+            />
+          </Card>
+        </AnimatedSection>
+
         {/* Settings */}
         <AnimatedSection delay={300}>
           <Text style={styles.sectionTitle}>Configuración</Text>
@@ -176,6 +200,77 @@ export const PerfilScreen: React.FC<PerfilScreenProps> = ({ navigation }) => {
               title="Vibración"
               value={settings.vibracionActiva ? 'Activada' : 'Desactivada'}
             />
+            {/* Toggle Tema claro/oscuro (1.7) — conectado a settings.temaOscuro */}
+            <View style={styles.settingItem}>
+              <View style={styles.settingIcon}>
+                <Ionicons
+                  name={settings.temaOscuro ? 'moon-outline' : 'sunny-outline'}
+                  size={22}
+                  color={colors.lime}
+                />
+              </View>
+              <View style={styles.settingContent}>
+                <Text style={styles.settingTitle}>Tema oscuro</Text>
+                <Text style={styles.settingValue}>
+                  {settings.temaOscuro ? 'Activado' : 'Desactivado'}
+                </Text>
+              </View>
+              <Switch
+                value={settings.temaOscuro}
+                onValueChange={(v) => updateSettings({ temaOscuro: v })}
+                trackColor={{ false: colors.border, true: colors.lime }}
+                thumbColor={colors.white}
+              />
+            </View>
+          </Card>
+        </AnimatedSection>
+
+        {/* Logros (1.4) */}
+        <AnimatedSection delay={350}>
+          <Text style={styles.sectionTitle}>Logros</Text>
+          <Card variant="default" padding="none">
+            {logros.map((l, i) => (
+              <View
+                key={l.id}
+                style={[
+                  styles.logroItem,
+                  i < logros.length - 1 && styles.logroItemBorder,
+                ]}
+              >
+                <View
+                  style={[
+                    styles.logroIcon,
+                    {
+                      backgroundColor: l.desbloqueado
+                        ? `${colors.lime}20`
+                        : `${colors.textMuted}15`,
+                    },
+                  ]}
+                >
+                  <Ionicons
+                    name={l.desbloqueado ? 'medal' : 'lock-closed-outline'}
+                    size={20}
+                    color={l.desbloqueado ? colors.lime : colors.textMuted}
+                  />
+                </View>
+                <View style={styles.logroContent}>
+                  <Text
+                    style={[
+                      styles.logroTitle,
+                      !l.desbloqueado && { color: colors.textSecondary },
+                    ]}
+                  >
+                    {l.titulo}
+                  </Text>
+                  <Text style={styles.logroDesc}>{l.descripcion}</Text>
+                </View>
+                {!l.desbloqueado && (
+                  <Text style={styles.logroProgreso}>
+                    {Math.round(l.progreso * 100)}%
+                  </Text>
+                )}
+              </View>
+            ))}
           </Card>
         </AnimatedSection>
 
@@ -347,6 +442,42 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.textSecondary,
     marginTop: 2,
+  },
+  logroItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+  },
+  logroItemBorder: {
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  logroIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  logroContent: {
+    flex: 1,
+  },
+  logroTitle: {
+    fontFamily: fontFamily.medium,
+    fontSize: 16,
+    color: colors.textPrimary,
+  },
+  logroDesc: {
+    fontFamily: fontFamily.regular,
+    fontSize: 13,
+    color: colors.textSecondary,
+    marginTop: 2,
+  },
+  logroProgreso: {
+    fontFamily: fontFamily.semibold,
+    fontSize: 13,
+    color: colors.textMuted,
   },
   logoutContainer: {
     marginTop: 32,
