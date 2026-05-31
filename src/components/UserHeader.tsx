@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, Image, ViewStyle, TextStyle } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, fontFamily } from '../constants/theme';
 import { useUser } from '../store/userStore';
 
@@ -18,13 +19,16 @@ export const UserHeader: React.FC<UserHeaderProps> = ({
   subtitle,
 }) => {
   const user = useUser();
+  const insets = useSafeAreaInsets();
 
   const containerStyle: ViewStyle = {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingVertical: 16,
+    // Respetar el área segura superior (status bar / Dynamic Island).
+    paddingTop: insets.top + 16,
+    paddingBottom: 16,
   };
 
   const leftContainerStyle: ViewStyle = {
