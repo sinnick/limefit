@@ -48,6 +48,10 @@ import { ThemeProvider } from './src/theme/ThemeProvider';
 // Store
 import { useIsAuthenticated } from './src/store/userStore';
 
+// Services — offline-first (CONTRACT-fase5A §2.3 / §2.6)
+import { initSyncQueueTriggers } from './src/services/syncQueue';
+import { restaurarQueryClient, persistirQueryClient } from './src/services/queryPersister';
+
 // Types
 import { RootStackParamList } from './src/types';
 
@@ -71,6 +75,10 @@ const queryClient = new QueryClient({
     },
   },
 });
+
+// Hidratar la caché de RQ desde MMKV ANTES del primer render de queries
+// (CONTRACT-fase5A §2.6). MMKV es síncrono → no hace falta gate de isRestoring.
+restaurarQueryClient(queryClient);
 
 // Navigation component
 const Navigation: React.FC = () => {
@@ -154,6 +162,18 @@ export default function App() {
     }
 
     prepare();
+  }, []);
+
+  // Offline-first (CONTRACT-fase5A §2.3 / §2.6): activar triggers de flush
+  // (AppState→active, poll de reintento, intento al arrancar) y la persistencia
+  // de la caché de RQ en MMKV. Ambos devuelven cleanup.
+  useEffect(() => {
+    const cleanupTriggers = initSyncQueueTriggers();
+    const cleanupPersist = persistirQueryClient(queryClient);
+    return () => {
+      cleanupTriggers();
+      cleanupPersist();
+    };
   }, []);
 
   const onLayoutRootView = useCallback(async () => {

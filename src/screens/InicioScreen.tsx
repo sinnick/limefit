@@ -21,7 +21,7 @@ import { useHistorialWorkouts } from '../store/workoutStore';
 import { useRecords } from '../store/recordsStore';
 import { calcularRacha, calcularLogros } from '../utils/achievements';
 import { Card, ProgressBar, Loading } from '../components/ui';
-import { UserHeader } from '../components';
+import { UserHeader, SyncStatusBadge } from '../components';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -210,6 +210,11 @@ export const InicioScreen: React.FC<InicioScreenProps> = ({ navigation }) => {
             // TODO: Navigate to settings
           }}
         />
+
+        {/* Indicador de estado de sync (5.2) — fila bajo el header */}
+        <View style={styles.syncRow}>
+          <SyncStatusBadge />
+        </View>
 
         {/* Quick Stats */}
         <Animated.View style={[styles.statsContainer, { opacity: statsAnim, transform: [{ translateY: statsTranslateY }] }]}>
@@ -445,6 +450,10 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingBottom: 32,
+  },
+  syncRow: {
+    paddingHorizontal: 20,
+    marginBottom: 16,
   },
   statsContainer: {
     marginHorizontal: 20,

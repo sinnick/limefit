@@ -39,6 +39,9 @@ export interface SyncQueueItem {
 interface SyncState {
   queue: SyncQueueItem[];
   isFlushing: boolean;
+  // Telemetría observable (CONTRACT-fase5A §2.1). NO se recalcula: la escribe flush().
+  lastSyncAt?: number; // epoch ms del último flush que terminó (con o sin éxito)
+  lastError?: string;  // último error de red/lote observado en el flush más reciente
   enqueueRecord: (r: Record) => void;
   enqueueWorkout: (w: WorkoutCompletado) => void;
   enqueueMetric: (m: MetricaCorporal) => void;
@@ -50,7 +53,7 @@ interface SyncState {
 
 // Tope de reintentos automáticos (CONTRACT c.6). Pasado el tope el item queda
 // `failed` y NO se reintenta solo, pero PERMANECE en la cola (no se descarta).
-const MAX_ATTEMPTS = 10;
+export const MAX_ATTEMPTS = 10;
 
 // Backoff exponencial con tope: min(2^attempts * 5s, 5min) (CONTRACT c.4 #4).
 const backoff = (attempts: number): number => {
@@ -80,6 +83,8 @@ export const useSyncStore = create<SyncState>()(
     (set, get) => ({
       queue: [],
       isFlushing: false,
+      lastSyncAt: undefined,
+      lastError: undefined,
 
       // Encolar un record/PR. Síncrono y local. Idempotencia: clientId = id local.
       enqueueRecord: (record) => {
@@ -240,6 +245,10 @@ export const useSyncStore = create<SyncState>()(
 
         set({ isFlushing: true });
 
+        // Error de red/lote observado en ESTE flush (CONTRACT-fase5A §2.1). Se
+        // escribe en el store al terminar; si el flush sale limpio se limpia.
+        let flushError: string | undefined;
+
         // Marcar lo que va a salir como inFlight (CONTRACT c.5).
         const inFlightIds = new Set(
           [...records, ...workouts, ...metrics, ...asistencias].map((q) => q.clientId)
@@ -275,6 +284,7 @@ export const useSyncStore = create<SyncState>()(
             // Falla la request entera (sin red, timeout, 5xx): TODO el lote vuelve a
             // failed con attempts++ y backoff (CONTRACT c.5). Nada se pierde.
             const msg = err?.message ?? 'error de red';
+            flushError = msg; // telemetría: último error del flush (CONTRACT-fase5A §2.1)
             for (const item of items) get().markFailed(item.clientId, msg);
           }
         };
@@ -328,7 +338,10 @@ export const useSyncStore = create<SyncState>()(
             });
           }
         } finally {
-          set({ isFlushing: false });
+          // Telemetría observable (CONTRACT-fase5A §2.1): timestamp del flush que
+          // terminó (con o sin éxito) y último error. Si el flush salió limpio se
+          // limpia lastError para reflejar "al día".
+          set({ isFlushing: false, lastSyncAt: Date.now(), lastError: flushError });
         }
       },
     }),
@@ -336,8 +349,14 @@ export const useSyncStore = create<SyncState>()(
       // Clave de storage por marca (CONTRACT c.2): ${KEY_PREFIX}sync_queue.
       name: STORAGE_KEYS.SYNC_QUEUE,
       storage: createJSONStorage(() => zustandStorage),
-      // partialize: persistir SOLO la cola (no isFlushing) (CONTRACT c.2).
-      partialize: (state) => ({ queue: state.queue }),
+      // partialize: persistir la cola + telemetría (NO isFlushing) (CONTRACT c.2 /
+      // fase5A §2.1). lastSyncAt/lastError sobreviven reinicios para que el badge
+      // muestre el último estado conocido sin esperar al primer flush.
+      partialize: (state) => ({
+        queue: state.queue,
+        lastSyncAt: state.lastSyncAt,
+        lastError: state.lastError,
+      }),
       onRehydrateStorage: () => (state) => {
         // Items que quedaron 'inFlight' cuando la app murió a mitad de un flush:
         // devolverlos a 'pending' para que el próximo flush los reintente.
@@ -406,7 +425,21 @@ export const initSyncQueueTriggers = (): (() => void) => {
     // netinfo no instalado: se ignora (trigger opcional).
   }
 
-  // 3) Intento inmediato al arrancar (drena lo que quedó pendiente de sesiones
+  // 3) Poll de reintento (CONTRACT-fase5A §2.5). Reemplaza el trigger de
+  //    "recuperó conectividad" que daba NetInfo (no instalado). Cada 30s intenta
+  //    un flush SOLO si hay items reintentables (pending/inFlight, o failed con
+  //    attempts < MAX_ATTEMPTS). flush es reentrante-safe e isDue respeta el
+  //    backoff, así que el poll nunca fuerza reintentos antes de tiempo.
+  const pollId = setInterval(() => {
+    const { queue } = useSyncStore.getState();
+    const hayReintentables = queue.some(
+      (q) => q.status !== 'failed' || q.attempts < MAX_ATTEMPTS
+    );
+    if (hayReintentables) void useSyncStore.getState().flush();
+  }, 30_000);
+  cleanups.push(() => clearInterval(pollId));
+
+  // 4) Intento inmediato al arrancar (drena lo que quedó pendiente de sesiones
   //    anteriores en cuanto la app abre con red).
   void useSyncStore.getState().flush();
 

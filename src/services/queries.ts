@@ -18,6 +18,7 @@ import { useUserStore } from '../store/userStore';
 import { useRutinasStore } from '../store/rutinasStore';
 import { useRecordsStore } from '../store/recordsStore';
 import { useBodyMetricsStore } from '../store/bodyMetricsStore';
+import { useSyncStore } from './syncQueue';
 import { Rutina, PerfilUpdate } from '../types';
 
 // ============ Auth Queries ============
@@ -33,8 +34,11 @@ export const useLogin = () => {
     },
     onSuccess: (user) => {
       // El backend puede devolver user: null si el DNI no existe (CONTRACT b.1).
-      if (user) setUser(user);
-      else setLoading(false);
+      if (user) {
+        setUser(user);
+        // Drena lo acumulado offline al loguear (CONTRACT-fase5A §2.4).
+        void useSyncStore.getState().flush();
+      } else setLoading(false);
     },
     onError: () => {
       setLoading(false);

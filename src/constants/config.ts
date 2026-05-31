@@ -34,6 +34,8 @@ export const STORAGE_KEYS = {
   SETTINGS: `${KEY_PREFIX}settings`,
   // Cola de sync offline-first (CONTRACT c.2). Persistida en MMKV por marca.
   SYNC_QUEUE: `${KEY_PREFIX}sync_queue`,
+  // Caché de React Query persistida en MMKV (CONTRACT-fase5A §2.6).
+  RQ_CACHE: `${KEY_PREFIX}rq_cache`,
 } as const;
 
 // Query Keys for React Query
