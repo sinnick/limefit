@@ -39,6 +39,16 @@ export interface BrandNativeConfig {
   splashBackgroundColor: string;
 }
 
+// Familias tipográficas por rol de peso (deben coincidir con las keys cargadas
+// vía Font.loadAsync para la marca activa). Misma forma que theme.fontFamily.
+export interface BrandFontFamily {
+  regular: string;
+  medium: string;
+  semibold: string;
+  bold: string;
+  light: string;
+}
+
 export interface BrandConfig {
   // Debe coincidir con el nombre de carpeta y con el valor de APP_BRAND/EXPO_PUBLIC_BRAND.
   key: string;
@@ -58,4 +68,11 @@ export interface BrandConfig {
 
   // Paleta de colores de la marca
   palette: BrandPalette;
+
+  // Nombres de familias tipográficas por rol.
+  fontFamily: BrandFontFamily;
+
+  // Assets de fuentes a cargar (require de .ttf) — no serializable en JSON,
+  // se inyecta en el registry. key = nombre de familia, value = require(...).
+  fontAssets?: Record<string, number>;
 }

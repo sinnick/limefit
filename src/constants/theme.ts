@@ -70,13 +70,8 @@ export const fontSize = {
   '4xl': 36,
 } as const;
 
-export const fontFamily = {
-  regular: 'Work-Sans',
-  medium: 'Work-Sans-Medium',
-  semibold: 'Work-Sans-SemiBold',
-  bold: 'Work-Sans-Bold',
-  light: 'Work-Sans-Light',
-} as const;
+// Familias tipográficas de la marca activa (ver brands/<key>/brand.json).
+export const fontFamily = activeBrand.fontFamily;
 
 export const shadows = {
   sm: {

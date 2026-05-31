@@ -143,7 +143,7 @@ export const LoginScreen: React.FC = () => {
 
         {/* Footer */}
         <View style={styles.footer}>
-          <Text style={styles.versionText}>LimeFit v2.0</Text>
+          <Text style={styles.versionText}>{APP_CONFIG.name} v{APP_CONFIG.version}</Text>
         </View>
       </KeyboardAvoidingView>
     </View>

@@ -29,5 +29,12 @@
     "warning": "#F59E0B",
     "info": "#3B82F6",
     "border": "#2D2D3D"
+  },
+  "fontFamily": {
+    "regular": "Work-Sans",
+    "medium": "Work-Sans-Medium",
+    "semibold": "Work-Sans-SemiBold",
+    "bold": "Work-Sans-Bold",
+    "light": "Work-Sans-Light"
   }
 }

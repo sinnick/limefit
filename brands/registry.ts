@@ -15,8 +15,28 @@ const BRANDS: Record<string, BrandConfig> = {
 // Si una marca tiene logo de imagen, agregá: levelgym: require('./levelgym/assets/logo.png')
 const LOGO_IMAGES: Record<string, number> = {};
 
+// Assets de fuentes por marca (require de .ttf). Las keys deben coincidir con
+// los nombres de familia en brand.json -> fontFamily. Se cargan en App.tsx.
+const FONT_ASSETS: Record<string, Record<string, number>> = {
+  limefit: {
+    'Work-Sans': require('../assets/fonts/Work_Sans/static/WorkSans-Regular.ttf'),
+    'Work-Sans-Medium': require('../assets/fonts/Work_Sans/static/WorkSans-Medium.ttf'),
+    'Work-Sans-SemiBold': require('../assets/fonts/Work_Sans/static/WorkSans-SemiBold.ttf'),
+    'Work-Sans-Bold': require('../assets/fonts/Work_Sans/static/WorkSans-Bold.ttf'),
+    'Work-Sans-Light': require('../assets/fonts/Work_Sans/static/WorkSans-Light.ttf'),
+  },
+  levelgym: {
+    BebasNeue: require('./levelgym/assets/fonts/BebasNeue-Regular.ttf'),
+    Rajdhani: require('./levelgym/assets/fonts/Rajdhani-Regular.ttf'),
+    'Rajdhani-Medium': require('./levelgym/assets/fonts/Rajdhani-Medium.ttf'),
+    'Rajdhani-SemiBold': require('./levelgym/assets/fonts/Rajdhani-SemiBold.ttf'),
+    'Rajdhani-Light': require('./levelgym/assets/fonts/Rajdhani-Light.ttf'),
+  },
+};
+
 for (const key of Object.keys(BRANDS)) {
   if (LOGO_IMAGES[key]) BRANDS[key].logoImage = LOGO_IMAGES[key];
+  if (FONT_ASSETS[key]) BRANDS[key].fontAssets = FONT_ASSETS[key];
 }
 
 export const DEFAULT_BRAND = 'limefit';

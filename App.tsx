@@ -35,6 +35,7 @@ import { RootStackParamList } from './src/types';
 
 // Constants
 import { colors } from './src/constants/theme';
+import { activeBrand } from './brands/registry';
 
 // Prevent splash screen from auto-hiding
 SplashScreen.preventAutoHideAsync();
@@ -108,14 +109,10 @@ export default function App() {
   useEffect(() => {
     async function prepare() {
       try {
-        // Load fonts
-        await Font.loadAsync({
-          'Work-Sans': require('./assets/fonts/Work_Sans/static/WorkSans-Regular.ttf'),
-          'Work-Sans-Bold': require('./assets/fonts/Work_Sans/static/WorkSans-Bold.ttf'),
-          'Work-Sans-SemiBold': require('./assets/fonts/Work_Sans/static/WorkSans-SemiBold.ttf'),
-          'Work-Sans-Medium': require('./assets/fonts/Work_Sans/static/WorkSans-Medium.ttf'),
-          'Work-Sans-Light': require('./assets/fonts/Work_Sans/static/WorkSans-Light.ttf'),
-        });
+        // Load the active brand's fonts (ver brands/registry.ts).
+        if (activeBrand.fontAssets) {
+          await Font.loadAsync(activeBrand.fontAssets);
+        }
       } catch (e) {
         console.warn('Error loading fonts:', e);
       } finally {
