@@ -1,0 +1,33 @@
+{
+  "key": "limefit",
+  "appName": "LimeFit",
+  "tagline": "Tu progreso, tu fuerza",
+  "logoEmoji": "🍋",
+  "tenantId": "limefit",
+  "native": {
+    "name": "lime",
+    "slug": "lime",
+    "scheme": "limefit",
+    "bundleIdentifier": "com.sinnick007.lime",
+    "androidPackage": "com.sinnick007.lime",
+    "easProjectId": "952766c2-eb33-4982-b285-1f34d456876e",
+    "splashBackgroundColor": "#101010"
+  },
+  "palette": {
+    "accent": "#C4F135",
+    "accentDark": "#9BC12A",
+    "accentLight": "#D4F855",
+    "background": "#101010",
+    "surface": "#1a1a2e",
+    "surfaceLight": "#252536",
+    "card": "#1e1e30",
+    "textPrimary": "#FFFFFF",
+    "textSecondary": "#9CA3AF",
+    "textMuted": "#6B7280",
+    "success": "#10B981",
+    "error": "#EF4444",
+    "warning": "#F59E0B",
+    "info": "#3B82F6",
+    "border": "#2D2D3D"
+  }
+}

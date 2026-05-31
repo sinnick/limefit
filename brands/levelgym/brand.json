@@ -1,0 +1,33 @@
+{
+  "key": "levelgym",
+  "appName": "Level Gym",
+  "tagline": "Subí al próximo level",
+  "logoEmoji": "🏋️",
+  "tenantId": "levelgym",
+  "native": {
+    "name": "levelgym",
+    "slug": "levelgym",
+    "scheme": "levelgym",
+    "bundleIdentifier": "com.sinnick007.levelgym",
+    "androidPackage": "com.sinnick007.levelgym",
+    "easProjectId": "PENDING_EAS_INIT",
+    "splashBackgroundColor": "#0E0E10"
+  },
+  "palette": {
+    "accent": "#E20E14",
+    "accentDark": "#B00B10",
+    "accentLight": "#FF3B40",
+    "background": "#0E0E10",
+    "surface": "#1A1A1D",
+    "surfaceLight": "#26262B",
+    "card": "#1C1C20",
+    "textPrimary": "#FFFFFF",
+    "textSecondary": "#A0A0A8",
+    "textMuted": "#6B6B73",
+    "success": "#10B981",
+    "error": "#EF4444",
+    "warning": "#F59E0B",
+    "info": "#3B82F6",
+    "border": "#2E2E33"
+  }
+}

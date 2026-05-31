@@ -1,9 +1,11 @@
 import { MMKV } from 'react-native-mmkv';
 import { StateStorage } from 'zustand/middleware';
+import { activeBrand } from '../../brands/registry';
 
-// Crear instancia de MMKV
+// Crear instancia de MMKV — id por marca para aislar el storage entre marcas.
+// Para 'limefit' el id sigue siendo 'limefit-storage' (se preserva el storage existente).
 export const storage = new MMKV({
-  id: 'limefit-storage',
+  id: `${activeBrand.key}-storage`,
 });
 
 // Adaptador para Zustand persist

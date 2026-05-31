@@ -12,6 +12,8 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { StatusBar } from 'expo-status-bar';
 import { colors, fontFamily } from '../constants/theme';
+import { APP_CONFIG } from '../constants/config';
+import { activeBrand } from '../../brands/registry';
 import { Button, Input } from '../components/ui';
 import { useLogin } from '../services/queries';
 import { useUserStore } from '../store/userStore';
@@ -90,10 +92,14 @@ export const LoginScreen: React.FC = () => {
         {/* Logo Section */}
         <Animated.View style={[styles.logoContainer, { transform: [{ scale: logoScale }] }]}>
           <View style={styles.logoWrapper}>
-            <Text style={styles.logoIcon}>🍋</Text>
+            {activeBrand.logoImage ? (
+              <Image source={activeBrand.logoImage} style={styles.logoImage} resizeMode="contain" />
+            ) : (
+              <Text style={styles.logoIcon}>{activeBrand.logoEmoji}</Text>
+            )}
           </View>
-          <Text style={styles.logoText}>LIMEFIT</Text>
-          <Text style={styles.tagline}>Tu progreso, tu fuerza</Text>
+          <Text style={styles.logoText}>{APP_CONFIG.name.toUpperCase()}</Text>
+          <Text style={styles.tagline}>{activeBrand.tagline}</Text>
         </Animated.View>
 
         {/* Form Section */}
@@ -171,6 +177,10 @@ const styles = StyleSheet.create({
   },
   logoIcon: {
     fontSize: 48,
+  },
+  logoImage: {
+    width: 72,
+    height: 72,
   },
   logoText: {
     fontFamily: fontFamily.bold,

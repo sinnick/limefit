@@ -1,17 +1,46 @@
 {
+  "cli": {
+    "appVersionSource": "remote"
+  },
   "build": {
-    "development": {
+    "development-limefit": {
       "developmentClient": true,
-      "distribution": "internal"
+      "distribution": "internal",
+      "env": { "APP_BRAND": "limefit", "EXPO_PUBLIC_BRAND": "limefit" }
     },
-    "preview": {
+    "preview-limefit": {
       "distribution": "internal",
       "android": {
         "buildType": "apk",
         "gradleCommand": ":app:assembleRelease",
         "developmentClient": false
-      }
+      },
+      "env": { "APP_BRAND": "limefit", "EXPO_PUBLIC_BRAND": "limefit" }
     },
-    "production": {}
+    "production-limefit": {
+      "env": { "APP_BRAND": "limefit", "EXPO_PUBLIC_BRAND": "limefit" }
+    },
+
+    "development-levelgym": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "env": { "APP_BRAND": "levelgym", "EXPO_PUBLIC_BRAND": "levelgym" }
+    },
+    "preview-levelgym": {
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk",
+        "gradleCommand": ":app:assembleRelease",
+        "developmentClient": false
+      },
+      "env": { "APP_BRAND": "levelgym", "EXPO_PUBLIC_BRAND": "levelgym" }
+    },
+    "production-levelgym": {
+      "env": { "APP_BRAND": "levelgym", "EXPO_PUBLIC_BRAND": "levelgym" }
+    }
+  },
+  "submit": {
+    "production-limefit": {},
+    "production-levelgym": {}
   }
 }

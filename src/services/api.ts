@@ -1,5 +1,5 @@
 import axios, { AxiosError, AxiosInstance } from 'axios';
-import { API_BASE_URL } from '../constants/config';
+import { API_BASE_URL, TENANT_ID } from '../constants/config';
 import {
   ApiResponse,
   LoginResponse,
@@ -16,13 +16,15 @@ const api: AxiosInstance = axios.create({
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
+    // Identificador de marca/tenant para el backend multi-tenant.
+    'X-Brand': TENANT_ID,
   },
 });
 
 // Interceptor para logs de desarrollo
 api.interceptors.request.use(
   (config) => {
-    console.log(`[API] ${config.method?.toUpperCase()} ${config.url}`);
+    console.log(`[API][${TENANT_ID}] ${config.method?.toUpperCase()} ${config.url}`);
     return config;
   },
   (error) => {

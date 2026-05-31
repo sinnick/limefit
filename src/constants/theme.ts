@@ -1,31 +1,40 @@
-// LimeFit Design System
-// Basado en el PRD - Tema oscuro con accent lime
+// Design System (white-label)
+// Tema oscuro con accent de marca. Los colores se derivan del brand activo
+// (ver brands/registry.ts); la interfaz `colors`/`shadows` se mantiene igual
+// para no tocar los archivos consumidores.
+import { activeBrand } from '../../brands/registry';
+
+const p = activeBrand.palette;
 
 export const colors = {
-  // Primary
-  lime: '#C4F135',
-  limeDark: '#9BC12A',
-  limeLight: '#D4F855',
+  // Accent de marca. Se mantienen las keys `lime*` como alias del accent para
+  // no tener que reescribir los usos existentes (`colors.lime`, variant="lime", etc.).
+  accent: p.accent,
+  accentDark: p.accentDark,
+  accentLight: p.accentLight,
+  lime: p.accent,
+  limeDark: p.accentDark,
+  limeLight: p.accentLight,
 
   // Background
-  background: '#101010',
-  surface: '#1a1a2e',
-  surfaceLight: '#252536',
-  card: '#1e1e30',
+  background: p.background,
+  surface: p.surface,
+  surfaceLight: p.surfaceLight,
+  card: p.card,
 
   // Text
-  textPrimary: '#FFFFFF',
-  textSecondary: '#9CA3AF',
-  textMuted: '#6B7280',
+  textPrimary: p.textPrimary,
+  textSecondary: p.textSecondary,
+  textMuted: p.textMuted,
 
   // Status
-  success: '#10B981',
-  error: '#EF4444',
-  warning: '#F59E0B',
-  info: '#3B82F6',
+  success: p.success,
+  error: p.error,
+  warning: p.warning,
+  info: p.info,
 
   // Misc
-  border: '#2D2D3D',
+  border: p.border,
   overlay: 'rgba(0, 0, 0, 0.7)',
   white: '#FFFFFF',
   black: '#000000',
@@ -91,14 +100,18 @@ export const shadows = {
     shadowRadius: 8,
     elevation: 8,
   },
+  // Glow con el accent de marca (key `lime` conservada como alias).
   lime: {
-    shadowColor: colors.lime,
+    shadowColor: colors.accent,
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.3,
     shadowRadius: 12,
     elevation: 8,
   },
 } as const;
+
+// Alias canónico (mismo objeto que shadows.lime).
+export const accentShadow = shadows.lime;
 
 export const animation = {
   fast: 150,
