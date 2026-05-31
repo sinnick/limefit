@@ -178,6 +178,12 @@ export const PerfilScreen: React.FC<PerfilScreenProps> = ({ navigation }) => {
               value="Nombre, email, foto y objetivos"
               onPress={() => navigation.navigate('EditarPerfil')}
             />
+            <SettingItem
+              icon="notifications-outline"
+              title="Recordatorios"
+              value="Avisos de entrenamiento"
+              onPress={() => navigation.navigate('Notificaciones')}
+            />
           </Card>
         </AnimatedSection>
 

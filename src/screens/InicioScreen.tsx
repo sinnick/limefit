@@ -280,12 +280,28 @@ export const InicioScreen: React.FC<InicioScreenProps> = ({ navigation }) => {
               delay={600}
             />
             <MenuCard
+              title="Ejercicios"
+              subtitle="Biblioteca"
+              icon="library-outline"
+              color={colors.info}
+              onPress={() => navigation.navigate('Biblioteca')}
+              delay={700}
+            />
+            <MenuCard
+              title="Check-in"
+              subtitle="Asistencia QR"
+              icon="qr-code-outline"
+              color={colors.success}
+              onPress={() => navigation.navigate('ScanQR')}
+              delay={800}
+            />
+            <MenuCard
               title="Mi Perfil"
               subtitle="Configuración"
               icon="person-outline"
               color={colors.textSecondary}
               onPress={() => navigation.navigate('Perfil')}
-              delay={700}
+              delay={900}
             />
           </View>
         </View>
