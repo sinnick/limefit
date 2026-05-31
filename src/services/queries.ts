@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { QUERY_KEYS } from '../constants/config';
 import { authApi, rutinasApi, recordsApi } from './api';
@@ -38,18 +39,23 @@ export const useRutinasQuery = () => {
   const setRutinas = useRutinasStore((state) => state.setRutinas);
   const dni = useUserStore((state) => state.user?.DNI) ?? '';
 
-  return useQuery({
+  const query = useQuery({
     queryKey: [...QUERY_KEYS.RUTINAS, dni],
     queryFn: () => rutinasApi.getMisRutinasAsignadas(dni),
     enabled: !!dni,
     staleTime: 5 * 60 * 1000, // 5 minutos
     gcTime: 30 * 60 * 1000, // 30 minutos (antes cacheTime)
     refetchOnWindowFocus: false,
-    select: (data) => {
-      setRutinas(data);
-      return data;
-    },
   });
+
+  // Sincronizar al store en un efecto, NO en `select`: `select` corre durante el
+  // render y llamar setRutinas ahí dispara "setState durante render" (rompía el
+  // árbol de InicioScreen → pantalla negra al volver de un workout).
+  useEffect(() => {
+    if (query.data) setRutinas(query.data);
+  }, [query.data, setRutinas]);
+
+  return query;
 };
 
 export const useRutinaQuery = (id: string) => {
@@ -112,17 +118,20 @@ export const useDeleteRutina = () => {
 export const useRecordsQuery = (dni: string) => {
   const setRecords = useRecordsStore((state) => state.setRecords);
 
-  return useQuery({
+  const query = useQuery({
     queryKey: [...QUERY_KEYS.RECORDS, dni],
     queryFn: () => recordsApi.getByUser(dni),
     enabled: !!dni,
     staleTime: 5 * 60 * 1000,
     gcTime: 30 * 60 * 1000,
-    select: (data) => {
-      setRecords(data);
-      return data;
-    },
   });
+
+  // Mismo motivo que en useRutinasQuery: el set al store va en efecto, no en `select`.
+  useEffect(() => {
+    if (query.data) setRecords(query.data);
+  }, [query.data, setRecords]);
+
+  return query;
 };
 
 export const useRecordsByEjercicio = (dni: string, ejercicioId: string) => {
