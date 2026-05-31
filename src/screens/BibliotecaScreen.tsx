@@ -40,23 +40,24 @@ interface BibliotecaScreenProps {
   route: RouteProp<RootStackParamList, 'Biblioteca'>;
 }
 
-// Grupos musculares del seed (inglés). Se muestran con etiqueta en español pero
-// el filtro viaja con el valor crudo del backend (GRUPO_MUSCULAR exacto).
+// Grupos musculares de la biblioteca (valores canónicos en español). El filtro
+// viaja con el valor exacto del backend (GRUPO_MUSCULAR), ya normalizado al
+// español: pecho/biceps/triceps/abdominales (sin tilde en el value).
 const GRUPOS: { value: string; label: string }[] = [
   { value: 'biceps', label: 'Bíceps' },
   { value: 'triceps', label: 'Tríceps' },
-  { value: 'chest', label: 'Pecho' },
-  { value: 'abdominals', label: 'Abdominales' },
-  { value: 'middle_back', label: 'Espalda' },
-  { value: 'quadriceps', label: 'Piernas' },
-  { value: 'shoulders', label: 'Hombros' },
-  { value: 'glutes', label: 'Glúteos' },
+  { value: 'pecho', label: 'Pecho' },
+  { value: 'abdominales', label: 'Abdominales' },
+  { value: 'espalda', label: 'Espalda' },
+  { value: 'piernas', label: 'Piernas' },
+  { value: 'hombros', label: 'Hombros' },
+  { value: 'gluteos', label: 'Glúteos' },
 ];
 
 const DIFICULTADES: { value: string; label: string }[] = [
-  { value: 'beginner', label: 'Principiante' },
-  { value: 'intermediate', label: 'Intermedio' },
-  { value: 'advanced', label: 'Avanzado' },
+  { value: 'principiante', label: 'Principiante' },
+  { value: 'intermedio', label: 'Intermedio' },
+  { value: 'avanzado', label: 'Avanzado' },
 ];
 
 // Etiqueta legible para el grupo muscular crudo del backend.

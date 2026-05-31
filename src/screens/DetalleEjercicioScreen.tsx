@@ -34,27 +34,22 @@ interface DetalleEjercicioScreenProps {
   route: RouteProp<RootStackParamList, 'DetalleEjercicio'>;
 }
 
-// Etiquetas legibles para los strings crudos del seed (inglés).
+// Etiquetas legibles para los valores canónicos en español del backend.
 const GRUPO_LABELS: { [k: string]: string } = {
   biceps: 'Bíceps',
   triceps: 'Tríceps',
-  chest: 'Pecho',
-  abdominals: 'Abdominales',
-  middle_back: 'Espalda',
-  lower_back: 'Espalda baja',
-  quadriceps: 'Cuádriceps',
-  hamstrings: 'Isquiotibiales',
-  shoulders: 'Hombros',
-  glutes: 'Glúteos',
-  calves: 'Pantorrillas',
-  forearms: 'Antebrazos',
+  pecho: 'Pecho',
+  abdominales: 'Abdominales',
+  espalda: 'Espalda',
+  piernas: 'Piernas',
+  hombros: 'Hombros',
+  gluteos: 'Glúteos',
 };
 
 const DIFICULTAD_LABELS: { [k: string]: string } = {
-  beginner: 'Principiante',
-  intermediate: 'Intermedio',
-  expert: 'Avanzado',
-  advanced: 'Avanzado',
+  principiante: 'Principiante',
+  intermedio: 'Intermedio',
+  avanzado: 'Avanzado',
 };
 
 const pretty = (raw?: string, map?: { [k: string]: string }): string => {
