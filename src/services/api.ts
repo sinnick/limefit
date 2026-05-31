@@ -8,7 +8,50 @@ import {
   User,
   Rutina,
   Record,
+  DiaRutina,
+  EjercicioEnRutina,
+  DiaSemana,
 } from '../types';
+
+// El backend usa un esquema plano en MAYÚSCULAS (NOMBRE, DESCRIPCION, DURACION,
+// DIAS: [String] con nombres de día, EJERCICIOS: [{nombre,series,repeticiones,descanso,peso,notas}]).
+// La app espera Rutina con dias[].ejercicios[] en camelCase. Este adaptador traduce.
+// Es defensivo: si la respuesta ya viene en el formato de la app, la deja igual.
+const adaptRutina = (r: any): Rutina => {
+  if (!r || Array.isArray(r.dias)) return r as Rutina;
+
+  const id: string = r._id ?? (r.ID != null ? String(r.ID) : '');
+
+  const ejercicios: EjercicioEnRutina[] = (r.EJERCICIOS ?? []).map((e: any, i: number) => ({
+    id: `${id}-ej-${i}`,
+    ejercicioId: `${id}-ej-${i}`,
+    nombre: e?.nombre ?? '',
+    sets: e?.series ?? 0,
+    reps: e?.repeticiones ?? 0,
+    peso: e?.peso != null && e.peso !== '' ? parseFloat(String(e.peso)) || undefined : undefined,
+    notas: e?.notas || undefined,
+    descanso: e?.descanso,
+  }));
+
+  // El backend no separa ejercicios por día: agrupamos todos en un único día.
+  const dias: DiaRutina[] =
+    ejercicios.length > 0 ? [{ id: `${id}-dia-0`, nombre: 'Entrenamiento', ejercicios }] : [];
+
+  return {
+    id,
+    _id: r._id,
+    nombre: r.NOMBRE ?? '',
+    descripcion: r.DESCRIPCION || undefined,
+    dias,
+    // DIAS (nombres de día de la semana) → diasSemana.
+    diasSemana: Array.isArray(r.DIAS)
+      ? (r.DIAS.map((d: any) => String(d).toLowerCase()) as DiaSemana[])
+      : undefined,
+    tiempoEstimado: r.DURACION,
+    createdAt: r.FECHA_CREACION,
+    updatedAt: r.FECHA_MODIFICACION,
+  };
+};
 
 // Crear instancia de axios
 const api: AxiosInstance = axios.create({
@@ -56,12 +99,12 @@ export const authApi = {
 export const rutinasApi = {
   getAll: async (): Promise<Rutina[]> => {
     const response = await api.get<RutinasResponse>('/rutinas');
-    return response.data.result_rutinas;
+    return (response.data.result_rutinas ?? []).map(adaptRutina);
   },
 
   getById: async (id: string): Promise<Rutina> => {
     const response = await api.get<{ rutina: Rutina }>(`/rutinas/${id}`);
-    return response.data.rutina;
+    return adaptRutina(response.data.rutina);
   },
 
   create: async (rutina: Omit<Rutina, 'id'>): Promise<Rutina> => {
@@ -79,11 +122,29 @@ export const rutinasApi = {
   },
 };
 
+// El backend devuelve records con campos en MAYÚSCULAS (DNI, EJERCICIO, PESO, FECHA)
+// y sin reps/notas. La app espera { ejercicioNombre, ejercicioId, peso, reps, fecha, ... }.
+const adaptRecord = (r: any): Record => {
+  if (!r || r.ejercicioNombre !== undefined) return r as Record;
+  const nombre = r.EJERCICIO ?? '';
+  return {
+    id: r._id ?? `${r.DNI}-${nombre}-${r.FECHA}`,
+    _id: r._id,
+    dni: r.DNI != null ? String(r.DNI) : '',
+    ejercicioId: nombre, // el backend no tiene id de ejercicio; usamos el nombre
+    ejercicioNombre: nombre,
+    peso: r.PESO ?? 0,
+    reps: r.REPS ?? 0, // el backend no guarda reps
+    fecha: r.FECHA ?? new Date().toISOString(),
+    notas: r.NOTAS || undefined,
+  };
+};
+
 // Records API
 export const recordsApi = {
   getByUser: async (dni: string): Promise<Record[]> => {
     const response = await api.post<RecordsResponse>('/records/list', { dni });
-    return response.data.result_records;
+    return (response.data.result_records ?? []).map(adaptRecord);
   },
 
   create: async (record: Omit<Record, 'id'>): Promise<Record> => {
@@ -105,7 +166,7 @@ export const recordsApi = {
       dni,
       ejercicioId,
     });
-    return response.data.records;
+    return (response.data.records ?? []).map(adaptRecord);
   },
 };
 

@@ -47,8 +47,9 @@ const RutinaCard: React.FC<RutinaCardProps> = ({ rutina, index, onPress }) => {
     ]).start();
   }, [index, fadeAnim, translateX]);
 
-  const totalEjercicios = rutina.dias.reduce(
-    (acc, dia) => acc + dia.ejercicios.length,
+  const dias = rutina.dias ?? [];
+  const totalEjercicios = dias.reduce(
+    (acc, dia) => acc + (dia.ejercicios?.length ?? 0),
     0
   );
 
@@ -74,7 +75,7 @@ const RutinaCard: React.FC<RutinaCardProps> = ({ rutina, index, onPress }) => {
           <View style={styles.cardStats}>
             <View style={styles.statItem}>
               <Ionicons name="calendar-outline" size={18} color={colors.lime} />
-              <Text style={styles.statText}>{rutina.dias.length} días</Text>
+              <Text style={styles.statText}>{dias.length} días</Text>
             </View>
             <View style={styles.statItem}>
               <Ionicons name="fitness-outline" size={18} color={colors.lime} />
@@ -88,9 +89,9 @@ const RutinaCard: React.FC<RutinaCardProps> = ({ rutina, index, onPress }) => {
             )}
           </View>
 
-          {rutina.dias.length > 0 && (
+          {dias.length > 0 && (
             <View style={styles.diasPreview}>
-              {rutina.dias.slice(0, 3).map((dia, idx) => (
+              {dias.slice(0, 3).map((dia, idx) => (
                 <Badge
                   key={dia.id || idx}
                   text={dia.nombre}
@@ -98,8 +99,8 @@ const RutinaCard: React.FC<RutinaCardProps> = ({ rutina, index, onPress }) => {
                   size="sm"
                 />
               ))}
-              {rutina.dias.length > 3 && (
-                <Badge text={`+${rutina.dias.length - 3}`} variant="default" size="sm" />
+              {dias.length > 3 && (
+                <Badge text={`+${dias.length - 3}`} variant="default" size="sm" />
               )}
             </View>
           )}
