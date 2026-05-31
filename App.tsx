@@ -59,7 +59,7 @@ const Navigation: React.FC = () => {
 
   return (
     <NavigationContainer>
-      <StatusBar style="light" backgroundColor="transparent" translucent />
+      <StatusBar style="light" />
       {!isAuthenticated ? (
         // Auth Stack
         <Stack.Navigator

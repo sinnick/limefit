@@ -134,7 +134,7 @@ export const Input = forwardRef<TextInput, InputProps>(
 Input.displayName = 'Input';
 
 // Componente especializado para inputs numéricos
-interface NumericInputProps extends Omit<InputProps, 'keyboardType'> {
+interface NumericInputProps extends Omit<InputProps, 'keyboardType' | 'value' | 'onChangeText'> {
   value: number;
   onChangeValue: (value: number) => void;
   min?: number;

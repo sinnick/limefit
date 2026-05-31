@@ -152,7 +152,6 @@ export const RutinasScreen: React.FC<RutinasScreenProps> = ({ navigation }) => {
               onPress={() => handleRutinaPress(item)}
             />
           )}
-          estimatedItemSize={180}
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
           refreshControl={

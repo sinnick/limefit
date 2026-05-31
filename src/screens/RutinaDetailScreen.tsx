@@ -188,7 +188,6 @@ export const RutinaDetailScreen: React.FC<RutinaDetailScreenProps> = ({
                 showDetails={false}
               />
             )}
-            estimatedItemSize={100}
             contentContainerStyle={styles.ejerciciosList}
             showsVerticalScrollIndicator={false}
             ListFooterComponent={<View style={{ height: 120 }} />}

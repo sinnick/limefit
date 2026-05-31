@@ -217,7 +217,6 @@ export const RecordsScreen: React.FC<RecordsScreenProps> = ({ navigation }) => {
           renderItem={({ item, index }) => (
             <RecordCard record={item} index={index} />
           )}
-          estimatedItemSize={160}
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
           refreshControl={

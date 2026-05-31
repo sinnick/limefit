@@ -184,13 +184,13 @@ export const useWorkoutStore = create<WorkoutState>()(
           };
         }),
 
-      completarSet: (ejercicioIndex, set) =>
+      completarSet: (ejercicioIndex, nuevoSet) =>
         set((state) => {
           if (!state.workoutActivo) return state;
 
           const ejercicios = [...state.workoutActivo.ejercicios];
           const ejercicio = { ...ejercicios[ejercicioIndex] };
-          ejercicio.setsCompletados = [...ejercicio.setsCompletados, set];
+          ejercicio.setsCompletados = [...ejercicio.setsCompletados, nuevoSet];
 
           // Marcar como completado si se alcanzaron todos los sets
           if (ejercicio.setsCompletados.length >= ejercicio.setsObjetivo) {

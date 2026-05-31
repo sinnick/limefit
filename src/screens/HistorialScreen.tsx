@@ -138,7 +138,6 @@ export const HistorialScreen: React.FC<HistorialScreenProps> = ({ navigation }) 
           renderItem={({ item, index }) => (
             <WorkoutCard workout={item} index={index} />
           )}
-          estimatedItemSize={180}
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
         />
