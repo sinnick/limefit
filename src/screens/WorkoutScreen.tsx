@@ -14,7 +14,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp } from '@react-navigation/native';
 import * as Haptics from 'expo-haptics';
 import { colors, fontFamily, shadows } from '../constants/theme';
-import { RootStackParamList, SetCompletado, EjercicioWorkout } from '../types';
+import { RootStackParamList, SetCompletado, EjercicioWorkout, WorkoutCompletado } from '../types';
 import { useWorkoutStore, useWorkoutActivo, useEjercicioActual } from '../store/workoutStore';
 import { useRecordsStore } from '../store/recordsStore';
 import { useUser } from '../store/userStore';
@@ -45,6 +45,9 @@ export const WorkoutScreen: React.FC<WorkoutScreenProps> = ({
   const [showRestTimer, setShowRestTimer] = useState(false);
   const [showExitModal, setShowExitModal] = useState(false);
   const [showSummaryModal, setShowSummaryModal] = useState(false);
+  // El resumen se guarda local: finalizarWorkout() limpia workoutActivo (workout
+  // pasa a null), así que el modal no puede leer `workout` — lee `summary`.
+  const [summary, setSummary] = useState<WorkoutCompletado | null>(null);
 
   const headerAnim = useRef(new Animated.Value(0)).current;
   const ejercicioAnim = useRef(new Animated.Value(0)).current;
@@ -163,8 +166,9 @@ export const WorkoutScreen: React.FC<WorkoutScreenProps> = ({
 
   const handleFinishWorkout = useCallback(() => {
     stopwatch.pause();
-    const summary = finalizarWorkout();
-    if (summary) {
+    const result = finalizarWorkout();
+    if (result) {
+      setSummary(result);
       setShowSummaryModal(true);
     }
   }, [finalizarWorkout, stopwatch]);
@@ -180,8 +184,58 @@ export const WorkoutScreen: React.FC<WorkoutScreenProps> = ({
     setShowExitModal(true);
   };
 
+  const summaryModal = (
+    <Modal
+      visible={showSummaryModal}
+      onClose={() => {
+        setShowSummaryModal(false);
+        navigation.goBack();
+      }}
+      title="¡Entrenamiento Completado!"
+      size="md"
+      showCloseButton={false}
+    >
+      <View style={styles.summaryContent}>
+        <View style={styles.summaryIcon}>
+          <Ionicons name="trophy" size={64} color={colors.lime} />
+        </View>
+
+        <Text style={styles.summaryTitle}>¡Excelente trabajo!</Text>
+
+        <View style={styles.summaryStats}>
+          <View style={styles.summaryStat}>
+            <Ionicons name="time-outline" size={24} color={colors.lime} />
+            <Text style={styles.summaryStatValue}>{stopwatch.formatted}</Text>
+            <Text style={styles.summaryStatLabel}>Duración</Text>
+          </View>
+          <View style={styles.summaryStat}>
+            <Ionicons name="fitness-outline" size={24} color={colors.lime} />
+            <Text style={styles.summaryStatValue}>
+              {summary?.ejercicios.filter((e) => e.completado).length ?? 0}
+            </Text>
+            <Text style={styles.summaryStatLabel}>Ejercicios</Text>
+          </View>
+        </View>
+
+        <Button
+          title="Finalizar"
+          variant="primary"
+          size="lg"
+          fullWidth
+          onPress={() => {
+            setShowSummaryModal(false);
+            navigation.goBack();
+          }}
+        />
+      </View>
+    </Modal>
+  );
+
+  // Tras finalizar, workoutActivo queda null (workout === null): no hay sesión que
+  // renderizar, pero SÍ hay que mostrar el resumen. Si retornáramos null acá la
+  // pantalla quedaría en negro y el modal nunca aparecería.
   if (!workout || !ejercicioActual) {
-    return null;
+    return <View style={styles.container}>{summaryModal}</View>;
   }
 
   return (
@@ -345,51 +399,8 @@ export const WorkoutScreen: React.FC<WorkoutScreenProps> = ({
         variant="danger"
       />
 
-      {/* Summary Modal */}
-      <Modal
-        visible={showSummaryModal}
-        onClose={() => {
-          setShowSummaryModal(false);
-          navigation.goBack();
-        }}
-        title="¡Entrenamiento Completado!"
-        size="md"
-        showCloseButton={false}
-      >
-        <View style={styles.summaryContent}>
-          <View style={styles.summaryIcon}>
-            <Ionicons name="trophy" size={64} color={colors.lime} />
-          </View>
-
-          <Text style={styles.summaryTitle}>¡Excelente trabajo!</Text>
-
-          <View style={styles.summaryStats}>
-            <View style={styles.summaryStat}>
-              <Ionicons name="time-outline" size={24} color={colors.lime} />
-              <Text style={styles.summaryStatValue}>{stopwatch.formatted}</Text>
-              <Text style={styles.summaryStatLabel}>Duración</Text>
-            </View>
-            <View style={styles.summaryStat}>
-              <Ionicons name="fitness-outline" size={24} color={colors.lime} />
-              <Text style={styles.summaryStatValue}>
-                {workout.ejercicios.filter((e) => e.completado).length}
-              </Text>
-              <Text style={styles.summaryStatLabel}>Ejercicios</Text>
-            </View>
-          </View>
-
-          <Button
-            title="Finalizar"
-            variant="primary"
-            size="lg"
-            fullWidth
-            onPress={() => {
-              setShowSummaryModal(false);
-              navigation.goBack();
-            }}
-          />
-        </View>
-      </Modal>
+      {/* Summary Modal (definido arriba; también se renderiza en el early-return) */}
+      {summaryModal}
     </View>
   );
 };
