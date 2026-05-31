@@ -1,7 +1,12 @@
 import { activeBrand } from '../../brands/registry';
 
-// API Configuration — backend multi-tenant compartido por todas las marcas.
-export const API_BASE_URL = 'https://limefit-backend.vercel.app/api';
+// API Configuration — backend multi-tenant.
+// Override para apuntar a un backend local con EXPO_PUBLIC_API_URL (se inlinea
+// en build; requiere reiniciar Metro con --clear). Ej. para el backend local:
+//   EXPO_PUBLIC_API_URL=http://192.168.100.108:3000/level/api   (tenant 'level')
+//   EXPO_PUBLIC_API_URL=http://192.168.100.108:3000/limefit/api (tenant 'limefit')
+export const API_BASE_URL =
+  process.env.EXPO_PUBLIC_API_URL ?? 'https://limefit-backend.vercel.app/api';
 
 // Identificador de tenant que se envía al backend en cada request (header X-Brand).
 export const TENANT_ID = activeBrand.tenantId;
