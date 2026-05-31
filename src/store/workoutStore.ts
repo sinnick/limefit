@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { zustandStorage } from './storage';
+import { syncQueue } from '../services/syncQueue';
 import {
   WorkoutActivo,
   WorkoutCompletado,
@@ -136,6 +137,11 @@ export const useWorkoutStore = create<WorkoutState>()(
 
         addWorkoutHistorial(workoutCompletado);
         set({ workoutActivo: null });
+
+        // Offline-first (CONTRACT c.3): tras guardar local, encolar para subir.
+        // El clientId es el WorkoutCompletado.id ya generado. Encolar es síncrono
+        // y no bloquea; el flush sube cuando hay red (o reintenta con backoff).
+        syncQueue.enqueueWorkout(workoutCompletado);
 
         return workoutCompletado;
       },
