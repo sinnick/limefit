@@ -4,8 +4,8 @@ import { AppState, AppStateStatus } from 'react-native';
 import { zustandStorage } from '../store/storage';
 import { STORAGE_KEYS } from '../constants/config';
 import { useUserStore } from '../store/userStore';
-import { recordsApi, workoutsApi, SyncBatchResult } from './api';
-import { Record, WorkoutCompletado } from '../types';
+import { recordsApi, workoutsApi, metricsApi, SyncBatchResult } from './api';
+import { Record, WorkoutCompletado, MetricaCorporal } from '../types';
 
 // ============================================================================
 // Cola de sync OFFLINE-FIRST (CONTRACT c).
@@ -21,13 +21,13 @@ import { Record, WorkoutCompletado } from '../types';
 // (recordsApi.subirRecords / workoutsApi.subirWorkouts) — un request por tipo.
 // ============================================================================
 
-export type SyncEntityType = 'record' | 'workout';
+export type SyncEntityType = 'record' | 'workout' | 'metric';
 export type SyncStatus = 'pending' | 'inFlight' | 'failed';
 
 export interface SyncQueueItem {
-  clientId: string; // UUID estable; clave de idempotencia (= id local del record/workout)
-  type: SyncEntityType; // 'record' | 'workout'
-  payload: Record | WorkoutCompletado; // el objeto ya en formato de la app
+  clientId: string; // UUID estable; clave de idempotencia (= id local del record/workout/metric)
+  type: SyncEntityType; // 'record' | 'workout' | 'metric'
+  payload: Record | WorkoutCompletado | MetricaCorporal; // el objeto ya en formato de la app
   dni: string;
   status: SyncStatus; // pending → inFlight → (ok: se elimina) | failed
   attempts: number; // nº de reintentos
@@ -41,6 +41,7 @@ interface SyncState {
   isFlushing: boolean;
   enqueueRecord: (r: Record) => void;
   enqueueWorkout: (w: WorkoutCompletado) => void;
+  enqueueMetric: (m: MetricaCorporal) => void;
   flush: () => Promise<void>;
   markSynced: (clientIds: string[]) => void; // elimina de la cola
   markFailed: (clientId: string, error: string) => void;
@@ -127,6 +128,31 @@ export const useSyncStore = create<SyncState>()(
         void get().flush();
       },
 
+      // Encolar una métrica corporal. Síncrono y local. Idempotencia: clientId =
+      // metric.clientId ?? metric.id. Igual que records: el DNI lo resuelve la cola
+      // desde el userStore si el objeto nace con dni ''.
+      enqueueMetric: (metric) => {
+        const dni = metric.dni || currentDni();
+        const clientId = metric.clientId ?? metric.id;
+        const payload: MetricaCorporal = { ...metric, dni, clientId };
+
+        set((state) => {
+          if (state.queue.some((q) => q.clientId === clientId)) return state;
+          const item: SyncQueueItem = {
+            clientId,
+            type: 'metric',
+            payload,
+            dni,
+            status: 'pending',
+            attempts: 0,
+            createdAt: new Date().toISOString(),
+          };
+          return { queue: [...state.queue, item] };
+        });
+
+        void get().flush();
+      },
+
       // Elimina los items ya sincronizados de la cola (CONTRACT c.5). La verdad ya
       // vive en el backend y en el historial/records local.
       markSynced: (clientIds) =>
@@ -169,13 +195,17 @@ export const useSyncStore = create<SyncState>()(
           (q): q is SyncQueueItem & { payload: WorkoutCompletado } =>
             q.type === 'workout' && !!q.dni
         );
-        if (records.length === 0 && workouts.length === 0) return;
+        const metrics = due.filter(
+          (q): q is SyncQueueItem & { payload: MetricaCorporal } =>
+            q.type === 'metric' && !!q.dni
+        );
+        if (records.length === 0 && workouts.length === 0 && metrics.length === 0) return;
 
         set({ isFlushing: true });
 
         // Marcar lo que va a salir como inFlight (CONTRACT c.5).
         const inFlightIds = new Set(
-          [...records, ...workouts].map((q) => q.clientId)
+          [...records, ...workouts, ...metrics].map((q) => q.clientId)
         );
         set((s) => ({
           queue: s.queue.map((q) =>
@@ -226,6 +256,14 @@ export const useSyncStore = create<SyncState>()(
           for (const [dni, items] of workoutsByDni) {
             await procesarGrupo(dni, items, () =>
               workoutsApi.subirWorkouts(dni, items.map((q) => q.payload as WorkoutCompletado))
+            );
+          }
+
+          // Métricas corporales agrupadas por DNI (CONTRACT-fase1 §2.2, offline-first).
+          const metricsByDni = groupByDni(metrics);
+          for (const [dni, items] of metricsByDni) {
+            await procesarGrupo(dni, items, () =>
+              metricsApi.subir(dni, items.map((q) => q.payload as MetricaCorporal))
             );
           }
         } finally {
@@ -322,5 +360,6 @@ export const initSyncQueueTriggers = (): (() => void) => {
 export const syncQueue = {
   enqueueRecord: (r: Record) => useSyncStore.getState().enqueueRecord(r),
   enqueueWorkout: (w: WorkoutCompletado) => useSyncStore.getState().enqueueWorkout(w),
+  enqueueMetric: (m: MetricaCorporal) => useSyncStore.getState().enqueueMetric(m),
   flush: () => useSyncStore.getState().flush(),
 };

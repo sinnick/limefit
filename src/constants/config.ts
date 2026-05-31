@@ -44,4 +44,5 @@ export const QUERY_KEYS = {
   RECORDS: ['records'],
   RECORD: (ejercicioId: string) => ['record', ejercicioId],
   WORKOUT_HISTORY: ['workoutHistory'],
+  METRICS: ['metrics'], // Fase 1 (1.3) — métricas corporales por DNI
 } as const;

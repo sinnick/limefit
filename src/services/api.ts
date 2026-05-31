@@ -11,6 +11,9 @@ import {
   DiaRutina,
   EjercicioEnRutina,
   DiaSemana,
+  MetricaCorporal,
+  MedidasCorporales,
+  PerfilUpdate,
 } from '../types';
 
 // ============================================================================
@@ -359,6 +362,111 @@ export const workoutsApi = {
       workouts: batch.map(workoutToBatchItem),
     });
     return response.data.results ?? [];
+  },
+};
+
+// ============================================================================
+// Adaptador de MetricaCorporal — backend (MAYÚSCULAS) ↔ app (camelCase)
+// (CONTRACT-fase1 §4.4). PESO→peso, PORCENTAJE_GRASA→porcentajeGrasa, etc.
+// ============================================================================
+const adaptMetrica = (m: any): MetricaCorporal => {
+  // Si ya viene en formato de app (tiene `fecha` camelCase), pasar tal cual (defensivo).
+  if (!m || m.fecha !== undefined) return m as MetricaCorporal;
+  const medidasRaw = m.MEDIDAS ?? undefined;
+  const medidas: MedidasCorporales | undefined = medidasRaw
+    ? {
+        pecho: medidasRaw.pecho,
+        cintura: medidasRaw.cintura,
+        cadera: medidasRaw.cadera,
+        brazo: medidasRaw.brazo,
+        muslo: medidasRaw.muslo,
+      }
+    : undefined;
+  return {
+    id: m._id ?? m.CLIENT_ID ?? `${m.DNI}-${m.FECHA}`,
+    _id: m._id,
+    clientId: m.CLIENT_ID || undefined,
+    dni: m.DNI != null ? String(m.DNI) : '',
+    fecha: m.FECHA ?? new Date().toISOString(),
+    peso: m.PESO != null ? Number(m.PESO) : undefined,
+    porcentajeGrasa: m.PORCENTAJE_GRASA != null ? Number(m.PORCENTAJE_GRASA) : undefined,
+    medidas,
+    notas: m.NOTAS || undefined,
+  };
+};
+
+// App → request: una MetricaCorporal local al payload del batch de metrics.
+// clientId = m.clientId ?? m.id (clave de idempotencia, igual que records).
+const metricToBatchItem = (m: MetricaCorporal) => ({
+  clientId: m.clientId ?? m.id,
+  fecha: m.fecha,
+  peso: m.peso,
+  porcentajeGrasa: m.porcentajeGrasa,
+  medidas: m.medidas ?? {},
+  notas: m.notas ?? '',
+});
+
+// ============================================================================
+// Métricas corporales API (CONTRACT-fase1 §2.2 / §4.4)
+// ============================================================================
+export const metricsApi = {
+  // POST /metrics/list → MetricaCorporal[] (lee {metrics}).
+  getByUser: async (dni: string): Promise<MetricaCorporal[]> => {
+    const response = await api.post<{ metrics: any[] }>('/metrics/list', { dni });
+    return (response.data.metrics ?? []).map(adaptMetrica);
+  },
+
+  // POST /metrics/batch → SyncBatchResult[] (idempotente por clientId, offline-first).
+  subir: async (dni: string, batch: MetricaCorporal[]): Promise<SyncBatchResult[]> => {
+    const response = await api.post<SyncBatchResponse>('/metrics/batch', {
+      dni,
+      metrics: batch.map(metricToBatchItem),
+    });
+    return response.data.results ?? [];
+  },
+};
+
+// ============================================================================
+// Adaptador de User — el endpoint de update de perfil devuelve {user} crudo del
+// backend (MAYÚSCULAS); lo adaptamos al shape User existente ({DNI, NAME, FOTO?, email?}).
+// ============================================================================
+const adaptUser = (u: any): User => {
+  if (!u) return u as User;
+  // Si ya viene en formato app (tiene NAME y no NOMBRE), pasar tal cual (defensivo).
+  if (u.NAME !== undefined && u.NOMBRE === undefined) return u as User;
+  const nombre = [u.NOMBRE, u.APELLIDO].filter(Boolean).join(' ').trim();
+  return {
+    DNI: u.DNI != null ? String(u.DNI) : '',
+    NAME: nombre || u.NAME || '',
+    FOTO: u.FOTO || undefined,
+    email: u.EMAIL || u.email || undefined,
+    createdAt: u.createdAt ?? u.FECHA_CREACION,
+  };
+};
+
+// App → request: PerfilUpdate camelCase. El backend mapea a MAYÚSCULAS y solo
+// pisa los campos presentes (no envia undefined).
+const profileToPayload = (dni: string, payload: PerfilUpdate): { [k: string]: any } => {
+  const out: { [k: string]: any } = { dni };
+  if (payload.nombre !== undefined) out.nombre = payload.nombre;
+  if (payload.apellido !== undefined) out.apellido = payload.apellido;
+  if (payload.email !== undefined) out.email = payload.email;
+  if (payload.foto !== undefined) out.foto = payload.foto;
+  if (payload.sexo !== undefined) out.sexo = payload.sexo;
+  if (payload.pesoObjetivo !== undefined) out.pesoObjetivo = payload.pesoObjetivo;
+  return out;
+};
+
+// ============================================================================
+// Perfil API (CONTRACT-fase1 §2.3 / §4.4) — update del socio por DNI (sin auth).
+// ============================================================================
+export const profileApi = {
+  update: async (dni: string, payload: PerfilUpdate): Promise<User> => {
+    const response = await api.post<{ status: string; user: any }>(
+      '/user/profile',
+      profileToPayload(dni, payload)
+    );
+    return adaptUser(response.data.user);
   },
 };
 

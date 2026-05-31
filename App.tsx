@@ -22,10 +22,15 @@ import {
   RecordsScreen,
   HistorialScreen,
   PerfilScreen,
+  RecordDetailScreen,
+  MetricasScreen,
+  CalendarioScreen,
+  EditarPerfilScreen,
 } from './src/screens';
 
 // Providers
 import { ToastProvider } from './src/components/ui/Toast';
+import { ThemeProvider } from './src/theme/ThemeProvider';
 
 // Store
 import { useIsAuthenticated } from './src/store/userStore';
@@ -96,6 +101,11 @@ const Navigation: React.FC = () => {
           <Stack.Screen name="Records" component={RecordsScreen} />
           <Stack.Screen name="Historial" component={HistorialScreen} />
           <Stack.Screen name="Perfil" component={PerfilScreen} />
+          {/* Fase 1 — pantallas nuevas (CONTRACT-fase1 §3.3) */}
+          <Stack.Screen name="RecordDetail" component={RecordDetailScreen} />
+          <Stack.Screen name="Metricas" component={MetricasScreen} />
+          <Stack.Screen name="Calendario" component={CalendarioScreen} />
+          <Stack.Screen name="EditarPerfil" component={EditarPerfilScreen} />
         </Stack.Navigator>
       )}
     </NavigationContainer>
@@ -138,11 +148,13 @@ export default function App() {
     <GestureHandlerRootView style={styles.container}>
       <QueryClientProvider client={queryClient}>
         <SafeAreaProvider>
-          <ToastProvider>
-            <View style={styles.container} onLayout={onLayoutRootView}>
-              <Navigation />
-            </View>
-          </ToastProvider>
+          <ThemeProvider>
+            <ToastProvider>
+              <View style={styles.container} onLayout={onLayoutRootView}>
+                <Navigation />
+              </View>
+            </ToastProvider>
+          </ThemeProvider>
         </SafeAreaProvider>
       </QueryClientProvider>
     </GestureHandlerRootView>

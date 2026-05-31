@@ -1,11 +1,12 @@
 import { useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { QUERY_KEYS } from '../constants/config';
-import { authApi, rutinasApi, recordsApi } from './api';
+import { authApi, rutinasApi, recordsApi, metricsApi, profileApi } from './api';
 import { useUserStore } from '../store/userStore';
 import { useRutinasStore } from '../store/rutinasStore';
 import { useRecordsStore } from '../store/recordsStore';
-import { Rutina } from '../types';
+import { useBodyMetricsStore } from '../store/bodyMetricsStore';
+import { Rutina, PerfilUpdate } from '../types';
 
 // ============ Auth Queries ============
 
@@ -140,5 +141,45 @@ export const useRecordsByEjercicio = (dni: string, ejercicioId: string) => {
     queryFn: () => recordsApi.getByEjercicio(dni, ejercicioId),
     enabled: !!dni && !!ejercicioId,
     staleTime: 5 * 60 * 1000,
+  });
+};
+
+// ============ Métricas corporales Queries (Fase 1, 1.3) ============
+//
+// LECTURA de métricas corporales por DNI. Las ESCRITURAS son offline-first y NO
+// pasan por React Query (igual que records/workouts): se guardan local en
+// bodyMetricsStore y se suben por la cola (enqueueMetric). El set al store va en
+// un efecto, NO en `select` (mismo motivo que useRutinasQuery/useRecordsQuery).
+export const useMetricasQuery = (dni: string) => {
+  const setMetrics = useBodyMetricsStore((state) => state.setMetrics);
+
+  const query = useQuery({
+    queryKey: [...QUERY_KEYS.METRICS, dni],
+    queryFn: () => metricsApi.getByUser(dni),
+    enabled: !!dni,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+  });
+
+  useEffect(() => {
+    if (query.data) setMetrics(query.data);
+  }, [query.data, setMetrics]);
+
+  return query;
+};
+
+// ============ Perfil Mutation (Fase 1, 1.5) ============
+//
+// Update del perfil del socio (POST /user/profile, solo DNI). Al tener éxito,
+// refleja el user adaptado en userStore.setUser para que la UI quede consistente.
+export const useUpdateProfile = () => {
+  const setUser = useUserStore((state) => state.setUser);
+  const dni = useUserStore((state) => state.user?.DNI) ?? '';
+
+  return useMutation({
+    mutationFn: (payload: PerfilUpdate) => profileApi.update(dni, payload),
+    onSuccess: (user) => {
+      if (user) setUser(user);
+    },
   });
 };

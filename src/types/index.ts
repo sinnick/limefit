@@ -188,9 +188,12 @@ export type RootStackParamList = {
   Rutina: { rutina: Rutina };
   Workout: { rutina: Rutina; diaId: string };
   Records: undefined;
-  RecordDetail: { ejercicioId: string };
+  RecordDetail: { ejercicioId: string; ejercicioNombre?: string }; // 1.2 (AMPLIAR la existente)
   Historial: undefined;
   Perfil: undefined;
+  Metricas: undefined; // 1.3
+  Calendario: undefined; // 1.6
+  EditarPerfil: undefined; // 1.5
 };
 
 export type MainTabParamList = {
@@ -207,4 +210,66 @@ export interface AppSettings {
   sonidoActivo: boolean;
   unidadPeso: 'kg' | 'lb';
   temaOscuro: boolean;
+}
+
+// ============================================================================
+// Fase 1 — tipos nuevos (CONTRACT-fase1 §1). Agregados al final, sin reordenar.
+// ============================================================================
+
+// --- 1.a Métricas corporales (1.3) ---------------------------------------
+// Métrica corporal (peso, % grasa, perímetros) en una fecha. Offline-first:
+// clientId = clave de idempotencia (= id local), igual que Record (CONTRACT b.3).
+export interface MedidasCorporales {
+  pecho?: number; // cm
+  cintura?: number; // cm
+  cadera?: number; // cm
+  brazo?: number; // cm
+  muslo?: number; // cm
+}
+
+export interface MetricaCorporal {
+  id: string;
+  _id?: string;
+  clientId?: string; // CLIENT_ID en backend (idempotencia)
+  dni: string;
+  fecha: string; // ISO
+  peso?: number; // peso corporal (kg/lb según settings.unidadPeso)
+  porcentajeGrasa?: number; // %
+  medidas?: MedidasCorporales;
+  notas?: string;
+}
+
+// --- 1.b Perfil editable (1.5) -------------------------------------------
+// Payload de edición de perfil del socio (PATCH por DNI). DNI NO es editable.
+export interface PerfilUpdate {
+  nombre?: string; // → NOMBRE
+  apellido?: string; // → APELLIDO
+  email?: string; // → EMAIL
+  foto?: string; // → FOTO (URL o dataURI)
+  sexo?: 'M' | 'F' | string; // → SEXO
+  pesoObjetivo?: number; // → PESO_OBJETIVO (campo nuevo en Usuario)
+}
+
+// --- 1.c Rachas y logros (1.4) -------------------------------------------
+// Se calculan LOCALMENTE (sin endpoint ni modelo backend) sobre
+// workoutStore.historialWorkouts y recordsStore (ver utils/achievements.ts).
+export interface Racha {
+  actual: number; // días/semanas consecutivos vigentes
+  mejor: number; // récord histórico
+  ultimaFecha?: string; // ISO del último entrenamiento contado
+  unidad: 'dias' | 'semanas';
+}
+
+export type LogroId =
+  | 'primer_entreno' | 'entrenos_10' | 'entrenos_50' | 'entrenos_100'
+  | 'primer_pr' | 'prs_10' | 'prs_25'
+  | 'racha_7' | 'racha_30';
+
+export interface Logro {
+  id: LogroId;
+  titulo: string;
+  descripcion: string;
+  desbloqueado: boolean;
+  fechaDesbloqueo?: string; // ISO, si desbloqueado
+  progreso: number; // 0..1 hacia el hito
 }
