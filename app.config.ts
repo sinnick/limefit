@@ -68,6 +68,13 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       ],
       'expo-status-bar',
       'expo-system-ui',
+      [
+        'expo-camera',
+        {
+          cameraPermission: 'Permitir $(PRODUCT_NAME) usar la cámara para escanear el QR de asistencia.',
+        },
+      ],
+      'expo-notifications',
     ],
   };
 };

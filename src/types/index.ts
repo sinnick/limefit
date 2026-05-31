@@ -142,6 +142,8 @@ export interface SetCompletado {
   completado: boolean;
   timestamp?: string;
   esRecord?: boolean;
+  rpe?: number;   // NUEVO 2.3: esfuerzo percibido 1-10 (entero). undefined = no registrado
+  notas?: string; // NUEVO 2.3: nota libre del set
 }
 
 // Workout History
@@ -194,6 +196,13 @@ export type RootStackParamList = {
   Metricas: undefined; // 1.3
   Calendario: undefined; // 1.6
   EditarPerfil: undefined; // 1.5
+  // Feature 2.1 / 2.2
+  Biblioteca: { grupoMuscular?: string; modoSustitucion?: boolean; ejercicioIndex?: number } | undefined;
+  DetalleEjercicio: { ejercicioId: string };
+  // Feature 2.5
+  ScanQR: undefined;
+  // Feature 2.4 (settings de recordatorios)
+  Notificaciones: undefined;
 };
 
 export type MainTabParamList = {
@@ -272,4 +281,47 @@ export interface Logro {
   desbloqueado: boolean;
   fechaDesbloqueo?: string; // ISO, si desbloqueado
   progreso: number; // 0..1 hacia el hito
+}
+
+// ============================================================================
+// Fase 2 — tipos nuevos (CONTRACT-fase2 §1). Agregados al final, sin reordenar.
+// ============================================================================
+
+// --- Feature 2.1: Biblioteca de ejercicios (shape del backend, camelCase) ---
+// El tipo `Ejercicio` legacy (líneas ~11) usa enums en español para rutinas;
+// la biblioteca proviene del seed inglés y usa strings crudos del backend.
+export interface EjercicioBiblioteca {
+  id: string;            // _id de Mongo (string)
+  nombre: string;        // <- NOMBRE
+  grupoMuscular: string; // <- GRUPO_MUSCULAR (inglés del seed: "biceps","chest","triceps","abdominals",...)
+  tipo?: string;         // <- TIPO ("strength","powerlifting")
+  equipo?: string;       // <- EQUIPO ("body_only","dumbbell","barbell","e-z_curl_bar","cable","other","None")
+  dificultad?: string;   // <- DIFICULTAD ("beginner","intermediate","advanced")
+  instrucciones?: string;// <- INSTRUCCIONES
+  imagen?: string;       // <- URL_IMAGEN ("" por ahora)
+}
+
+export interface EjerciciosSearchResponse {
+  status: 'ok' | 'error';
+  ejercicios: EjercicioBiblioteca[];
+  total: number;
+}
+
+// --- Feature 2.5: Asistencia / check-in (offline-first, type 'asistencia' en syncQueue) ---
+export type MetodoCheckin = 'qr' | 'dni' | 'manual';
+
+export interface Asistencia {
+  id: string;            // id local (UUID) = clientId de idempotencia
+  clientId?: string;     // CLIENT_ID en backend; default = id
+  dni: string;
+  fecha: string;         // ISO; el backend la normaliza a medianoche UTC para la unicidad por día
+  horaCheckin?: string;  // ISO con hora; <- HORA_CHECKIN
+  metodo: MetodoCheckin; // <- METODO
+  notas?: string;        // <- NOTAS
+}
+
+export interface AsistenciaResponse {
+  status: 'ok' | 'error';
+  asistencias: Asistencia[];
+  total: number;
 }

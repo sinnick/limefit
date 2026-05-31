@@ -1,7 +1,16 @@
 import { useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { QUERY_KEYS } from '../constants/config';
-import { authApi, rutinasApi, recordsApi, metricsApi, profileApi } from './api';
+import {
+  authApi,
+  rutinasApi,
+  recordsApi,
+  metricsApi,
+  profileApi,
+  ejerciciosApi,
+  asistenciaApi,
+  EjerciciosSearchParams,
+} from './api';
 import { useUserStore } from '../store/userStore';
 import { useRutinasStore } from '../store/rutinasStore';
 import { useRecordsStore } from '../store/recordsStore';
@@ -181,5 +190,52 @@ export const useUpdateProfile = () => {
     onSuccess: (user) => {
       if (user) setUser(user);
     },
+  });
+};
+
+// ============ Biblioteca de ejercicios Queries (Fase 2, 2.1) ============
+//
+// LECTURA pública de la biblioteca del gym (POST /ejercicios/search). No es
+// offline-first ni tiene store dedicado en el hub: la pantalla consume `data`
+// directo de React Query. La key incluye los filtros para cachear por búsqueda.
+export const useEjerciciosQuery = (params: EjerciciosSearchParams = {}) => {
+  return useQuery({
+    queryKey: ['ejercicios', params],
+    queryFn: () => ejerciciosApi.search(params),
+    staleTime: 10 * 60 * 1000, // 10 minutos (la biblioteca cambia poco)
+    gcTime: 30 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  });
+};
+
+// Detalle de un ejercicio de la biblioteca por id (Fase 2, 2.1). Reusa el
+// fallback de red de ejerciciosApi.getById; la pantalla puede igual leerlo de la
+// lista ya cacheada por useEjerciciosQuery.
+export const useDetalleEjercicioQuery = (ejercicioId: string) => {
+  return useQuery({
+    queryKey: ['ejercicio', ejercicioId],
+    queryFn: () => ejerciciosApi.getById(ejercicioId),
+    enabled: !!ejercicioId,
+    staleTime: 10 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+  });
+};
+
+// ============ Asistencia Queries (Fase 2, 2.5) ============
+//
+// LECTURA del historial de asistencia por DNI (POST /asistencia/list). Las
+// ESCRITURAS (check-in) son offline-first y NO pasan por React Query: van por la
+// cola (syncQueue.enqueueAsistencia). El store local de asistencia lo gestiona el
+// agente de feature (asistenciaStore); este hook solo expone la lectura de red.
+export const useAsistenciaQuery = (
+  dni: string,
+  rango?: { desde?: string; hasta?: string; limit?: number; skip?: number }
+) => {
+  return useQuery({
+    queryKey: ['asistencia', dni, rango ?? {}],
+    queryFn: () => asistenciaApi.getHistorial(dni, rango),
+    enabled: !!dni,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
   });
 };

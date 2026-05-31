@@ -14,6 +14,9 @@ import {
   MetricaCorporal,
   MedidasCorporales,
   PerfilUpdate,
+  EjercicioBiblioteca,
+  Asistencia,
+  MetodoCheckin,
 } from '../types';
 
 // ============================================================================
@@ -302,6 +305,9 @@ const workoutToBatchItem = (workout: WorkoutCompletado) => ({
       completado: s.completado,
       timestamp: s.timestamp,
       esRecord: s.esRecord ?? false,
+      // Feature 2.3 (aditivo, backward-compatible): solo se incluyen si vienen.
+      ...(s.rpe != null ? { rpe: s.rpe } : {}),
+      ...(s.notas ? { notas: s.notas } : {}),
     })),
   })),
 });
@@ -467,6 +473,137 @@ export const profileApi = {
       profileToPayload(dni, payload)
     );
     return adaptUser(response.data.user);
+  },
+};
+
+// ============================================================================
+// Adaptador de EjercicioBiblioteca — backend (MAYÚSCULAS) ↔ app (camelCase)
+// (CONTRACT-fase2 §1.1 / §2.1). El seed usa strings crudos en inglés.
+// ============================================================================
+const adaptEjercicioBiblioteca = (e: any): EjercicioBiblioteca => {
+  // Si ya viene en formato de app (tiene `nombre` camelCase), pasar tal cual (defensivo).
+  if (!e || e.nombre !== undefined) return e as EjercicioBiblioteca;
+  return {
+    id: e._id != null ? String(e._id) : '',
+    nombre: e.NOMBRE ?? '',
+    grupoMuscular: e.GRUPO_MUSCULAR ?? '',
+    tipo: e.TIPO || undefined,
+    equipo: e.EQUIPO || undefined,
+    dificultad: e.DIFICULTAD || undefined,
+    instrucciones: e.INSTRUCCIONES || undefined,
+    imagen: e.URL_IMAGEN || undefined,
+  };
+};
+
+export interface EjerciciosSearchParams {
+  query?: string;
+  grupoMuscular?: string;
+  dificultad?: string;
+  equipo?: string;
+  limit?: number;
+}
+
+// ============================================================================
+// Ejercicios (biblioteca) API (CONTRACT-fase2 §2.1) — lectura pública del gym.
+// POST /ejercicios/search con filtros opcionales. No es offline-first.
+// ============================================================================
+export const ejerciciosApi = {
+  // Búsqueda/listado con filtros. Devuelve la lista adaptada a camelCase.
+  search: async (params: EjerciciosSearchParams = {}): Promise<EjercicioBiblioteca[]> => {
+    const body: { [k: string]: any } = {};
+    if (params.query !== undefined) body.query = params.query;
+    if (params.grupoMuscular !== undefined) body.grupoMuscular = params.grupoMuscular;
+    if (params.dificultad !== undefined) body.dificultad = params.dificultad;
+    if (params.equipo !== undefined) body.equipo = params.equipo;
+    if (params.limit !== undefined) body.limit = params.limit;
+
+    const response = await api.post<{ status: string; ejercicios: any[]; total: number }>(
+      '/ejercicios/search',
+      body
+    );
+    return (response.data.ejercicios ?? []).map(adaptEjercicioBiblioteca);
+  },
+
+  // Detalle por id. No hay endpoint dedicado: se reusa search y se filtra por id.
+  // (El detalle se navega con el ejercicioId; si la lista ya está cacheada, la
+  // pantalla puede leerlo de ahí; este helper es el fallback de red.)
+  getById: async (ejercicioId: string): Promise<EjercicioBiblioteca | null> => {
+    const lista = await ejerciciosApi.search({ limit: 100 });
+    return lista.find((e) => e.id === ejercicioId) ?? null;
+  },
+};
+
+// ============================================================================
+// Adaptador de Asistencia — backend (MAYÚSCULAS) ↔ app (camelCase)
+// (CONTRACT-fase2 §1.3 / §2.5).
+// ============================================================================
+const adaptAsistencia = (a: any): Asistencia => {
+  // Si ya viene en formato de app (tiene `metodo` camelCase), pasar tal cual (defensivo).
+  if (!a || a.metodo !== undefined) return a as Asistencia;
+  return {
+    id: a._id ?? a.CLIENT_ID ?? `${a.DNI}-${a.FECHA}`,
+    clientId: a.CLIENT_ID || undefined,
+    dni: a.DNI != null ? String(a.DNI) : '',
+    fecha: a.FECHA ?? new Date().toISOString(),
+    horaCheckin: a.HORA_CHECKIN || undefined,
+    metodo: (a.METODO ?? 'qr') as MetodoCheckin,
+    notas: a.NOTAS || undefined,
+  };
+};
+
+// Resultado del check-in idempotente (CONTRACT-fase2 §2.5): { ok, created }.
+// Alineado con el patrón offline-first: created:false (ya existía hoy) = éxito.
+export interface CheckinResult {
+  clientId: string;
+  ok: boolean;
+  created?: boolean;
+  asistencia?: Asistencia;
+  error?: string;
+}
+
+// ============================================================================
+// Asistencia API (CONTRACT-fase2 §2.5) — check-in offline-first idempotente por
+// DNI+gym+día. La escritura del socio pasa por la cola de sync (type 'asistencia').
+// ============================================================================
+export const asistenciaApi = {
+  // POST /asistencia/checkin. Idempotente por (GYM_ID, DNI, FECHA-día).
+  // Devuelve un CheckinResult homogéneo con el resto de la cola (clientId, ok).
+  checkIn: async (dni: string, asistencia: Asistencia): Promise<CheckinResult> => {
+    const clientId = asistencia.clientId ?? asistencia.id;
+    try {
+      const response = await api.post<{ status: string; asistencia: any; created: boolean }>(
+        '/asistencia/checkin',
+        {
+          dni,
+          metodo: asistencia.metodo ?? 'qr',
+          clientId,
+          notas: asistencia.notas ?? '',
+          fecha: asistencia.horaCheckin ?? asistencia.fecha,
+        }
+      );
+      return {
+        clientId,
+        ok: response.data.status === 'ok',
+        created: response.data.created,
+        asistencia: response.data.asistencia
+          ? adaptAsistencia(response.data.asistencia)
+          : undefined,
+      };
+    } catch (err: any) {
+      return { clientId, ok: false, error: err?.message ?? 'error de red' };
+    }
+  },
+
+  // POST /asistencia/list → Asistencia[] (lee {asistencias}). Lectura por DNI.
+  getHistorial: async (
+    dni: string,
+    rango?: { desde?: string; hasta?: string; limit?: number; skip?: number }
+  ): Promise<Asistencia[]> => {
+    const response = await api.post<{ status: string; asistencias: any[]; total: number }>(
+      '/asistencia/list',
+      { dni, ...(rango ?? {}) }
+    );
+    return (response.data.asistencias ?? []).map(adaptAsistencia);
   },
 };
 

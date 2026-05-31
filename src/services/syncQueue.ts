@@ -4,8 +4,8 @@ import { AppState, AppStateStatus } from 'react-native';
 import { zustandStorage } from '../store/storage';
 import { STORAGE_KEYS } from '../constants/config';
 import { useUserStore } from '../store/userStore';
-import { recordsApi, workoutsApi, metricsApi, SyncBatchResult } from './api';
-import { Record, WorkoutCompletado, MetricaCorporal } from '../types';
+import { recordsApi, workoutsApi, metricsApi, asistenciaApi, SyncBatchResult } from './api';
+import { Record, WorkoutCompletado, MetricaCorporal, Asistencia } from '../types';
 
 // ============================================================================
 // Cola de sync OFFLINE-FIRST (CONTRACT c).
@@ -21,13 +21,13 @@ import { Record, WorkoutCompletado, MetricaCorporal } from '../types';
 // (recordsApi.subirRecords / workoutsApi.subirWorkouts) — un request por tipo.
 // ============================================================================
 
-export type SyncEntityType = 'record' | 'workout' | 'metric';
+export type SyncEntityType = 'record' | 'workout' | 'metric' | 'asistencia';
 export type SyncStatus = 'pending' | 'inFlight' | 'failed';
 
 export interface SyncQueueItem {
   clientId: string; // UUID estable; clave de idempotencia (= id local del record/workout/metric)
-  type: SyncEntityType; // 'record' | 'workout' | 'metric'
-  payload: Record | WorkoutCompletado | MetricaCorporal; // el objeto ya en formato de la app
+  type: SyncEntityType; // 'record' | 'workout' | 'metric' | 'asistencia'
+  payload: Record | WorkoutCompletado | MetricaCorporal | Asistencia; // el objeto ya en formato de la app
   dni: string;
   status: SyncStatus; // pending → inFlight → (ok: se elimina) | failed
   attempts: number; // nº de reintentos
@@ -42,6 +42,7 @@ interface SyncState {
   enqueueRecord: (r: Record) => void;
   enqueueWorkout: (w: WorkoutCompletado) => void;
   enqueueMetric: (m: MetricaCorporal) => void;
+  enqueueAsistencia: (a: Asistencia) => void;
   flush: () => Promise<void>;
   markSynced: (clientIds: string[]) => void; // elimina de la cola
   markFailed: (clientId: string, error: string) => void;
@@ -153,6 +154,32 @@ export const useSyncStore = create<SyncState>()(
         void get().flush();
       },
 
+      // Encolar una asistencia / check-in (CONTRACT-fase2 §2.5). Síncrono y local.
+      // Idempotencia: clientId = asistencia.clientId ?? asistencia.id. El backend
+      // colapsa por (GYM_ID, DNI, FECHA-día), así que reintentos del mismo día son
+      // no-op. El DNI lo resuelve la cola desde userStore si nace con dni ''.
+      enqueueAsistencia: (asistencia) => {
+        const dni = asistencia.dni || currentDni();
+        const clientId = asistencia.clientId ?? asistencia.id;
+        const payload: Asistencia = { ...asistencia, dni, clientId };
+
+        set((state) => {
+          if (state.queue.some((q) => q.clientId === clientId)) return state;
+          const item: SyncQueueItem = {
+            clientId,
+            type: 'asistencia',
+            payload,
+            dni,
+            status: 'pending',
+            attempts: 0,
+            createdAt: new Date().toISOString(),
+          };
+          return { queue: [...state.queue, item] };
+        });
+
+        void get().flush();
+      },
+
       // Elimina los items ya sincronizados de la cola (CONTRACT c.5). La verdad ya
       // vive en el backend y en el historial/records local.
       markSynced: (clientIds) =>
@@ -199,13 +226,23 @@ export const useSyncStore = create<SyncState>()(
           (q): q is SyncQueueItem & { payload: MetricaCorporal } =>
             q.type === 'metric' && !!q.dni
         );
-        if (records.length === 0 && workouts.length === 0 && metrics.length === 0) return;
+        const asistencias = due.filter(
+          (q): q is SyncQueueItem & { payload: Asistencia } =>
+            q.type === 'asistencia' && !!q.dni
+        );
+        if (
+          records.length === 0 &&
+          workouts.length === 0 &&
+          metrics.length === 0 &&
+          asistencias.length === 0
+        )
+          return;
 
         set({ isFlushing: true });
 
         // Marcar lo que va a salir como inFlight (CONTRACT c.5).
         const inFlightIds = new Set(
-          [...records, ...workouts, ...metrics].map((q) => q.clientId)
+          [...records, ...workouts, ...metrics, ...asistencias].map((q) => q.clientId)
         );
         set((s) => ({
           queue: s.queue.map((q) =>
@@ -265,6 +302,30 @@ export const useSyncStore = create<SyncState>()(
             await procesarGrupo(dni, items, () =>
               metricsApi.subir(dni, items.map((q) => q.payload as MetricaCorporal))
             );
+          }
+
+          // Asistencias / check-ins agrupados por DNI (CONTRACT-fase2 §2.5,
+          // offline-first). El endpoint /asistencia/checkin es por-item (no batch),
+          // así que se dispara una request por asistencia y se adapta cada
+          // CheckinResult a la forma SyncBatchResult que espera procesarGrupo
+          // (alineado por clientId; created:false del mismo día sigue siendo ok).
+          const asistenciasByDni = groupByDni(asistencias);
+          for (const [dni, items] of asistenciasByDni) {
+            await procesarGrupo(dni, items, async () => {
+              const results = await Promise.all(
+                items.map((q) =>
+                  asistenciaApi.checkIn(dni, q.payload as Asistencia)
+                )
+              );
+              return results.map(
+                (r): SyncBatchResult => ({
+                  clientId: r.clientId,
+                  ok: r.ok,
+                  created: r.created,
+                  error: r.error,
+                })
+              );
+            });
           }
         } finally {
           set({ isFlushing: false });
@@ -361,5 +422,6 @@ export const syncQueue = {
   enqueueRecord: (r: Record) => useSyncStore.getState().enqueueRecord(r),
   enqueueWorkout: (w: WorkoutCompletado) => useSyncStore.getState().enqueueWorkout(w),
   enqueueMetric: (m: MetricaCorporal) => useSyncStore.getState().enqueueMetric(m),
+  enqueueAsistencia: (a: Asistencia) => useSyncStore.getState().enqueueAsistencia(a),
   flush: () => useSyncStore.getState().flush(),
 };

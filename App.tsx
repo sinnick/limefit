@@ -30,6 +30,11 @@ import RecordDetailScreen from './src/screens/RecordDetailScreen';
 import MetricasScreen from './src/screens/MetricasScreen';
 import CalendarioScreen from './src/screens/CalendarioScreen';
 import EditarPerfilScreen from './src/screens/EditarPerfilScreen';
+// Pantallas de Fase 2 — mismo criterio: default import DIRECTO (no barrel).
+import BibliotecaScreen from './src/screens/BibliotecaScreen';
+import DetalleEjercicioScreen from './src/screens/DetalleEjercicioScreen';
+import ScanQRScreen from './src/screens/ScanQRScreen';
+import NotificacionesScreen from './src/screens/NotificacionesScreen';
 
 // Providers
 import { ToastProvider } from './src/components/ui/Toast';
@@ -109,6 +114,11 @@ const Navigation: React.FC = () => {
           <Stack.Screen name="Metricas" component={MetricasScreen} />
           <Stack.Screen name="Calendario" component={CalendarioScreen} />
           <Stack.Screen name="EditarPerfil" component={EditarPerfilScreen} />
+          {/* Fase 2 — pantallas nuevas (CONTRACT-fase2 §4) */}
+          <Stack.Screen name="Biblioteca" component={BibliotecaScreen} />
+          <Stack.Screen name="DetalleEjercicio" component={DetalleEjercicioScreen} />
+          <Stack.Screen name="ScanQR" component={ScanQRScreen} />
+          <Stack.Screen name="Notificaciones" component={NotificacionesScreen} />
         </Stack.Navigator>
       )}
     </NavigationContainer>
