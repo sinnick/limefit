@@ -18,6 +18,8 @@ import { useTheme } from '../hooks/useTheme';
 import { fontFamily, spacing, borderRadius, fontSize } from '../constants/theme';
 import { Card, EmptyState } from '../components/ui';
 import { ProgressionChart, ProgressionPoint } from '../components/ProgressionChart';
+import { LoadSuggestionBadge } from '../components/LoadSuggestionBadge';
+import { useLoadSuggestion } from '../hooks/useLoadSuggestion';
 
 // ============================================================================
 // RecordDetailScreen (CONTRACT-fase1 §3.2 / 1.2 — Progresión por ejercicio).
@@ -52,6 +54,11 @@ export const RecordDetailScreen: React.FC<RecordDetailScreenProps> = ({
   const user = useUser();
   const settings = useSettings();
   const pr = useRecordByEjercicio(ejercicioId);
+
+  // 5.4a: sugerencia de carga para el próximo entrenamiento (informativa,
+  // post-workout). Misma fuente que WorkoutScreen vía el hook fino; este screen
+  // solo consume el LoadSuggestion, no recalcula la heurística.
+  const sugerencia = useLoadSuggestion(ejercicioId);
 
   const [metric, setMetric] = useState<Metric>('peso');
   const [remoto, setRemoto] = useState<Record[] | null>(null);
@@ -202,6 +209,21 @@ export const RecordDetailScreen: React.FC<RecordDetailScreenProps> = ({
           )}
         </Card>
 
+        {/* 5.4a: sugerencia de carga para el próximo entrenamiento (informativa) */}
+        {sugerencia.basadoEn !== 'sin_datos' && (
+          <Card variant="elevated" padding="md" style={styles.sugerenciaCard}>
+            <Text style={[styles.chartTitle, { color: colors.textPrimary }]}>
+              Sugerencia para el próximo entrenamiento
+            </Text>
+            <View style={styles.sugerenciaBadgeWrap}>
+              <LoadSuggestionBadge suggestion={sugerencia} compact />
+            </View>
+            <Text style={[styles.sugerenciaRazon, { color: colors.textSecondary }]}>
+              {sugerencia.razon}
+            </Text>
+          </Card>
+        )}
+
         {/* Resumen */}
         {resumen && (
           <View style={styles.statsRow}>
@@ -349,6 +371,19 @@ const styles = StyleSheet.create({
   },
   chartCard: {
     marginBottom: spacing.md,
+  },
+  sugerenciaCard: {
+    marginBottom: spacing.md,
+    alignItems: 'center',
+  },
+  sugerenciaBadgeWrap: {
+    marginTop: spacing.sm,
+  },
+  sugerenciaRazon: {
+    fontFamily: fontFamily.regular,
+    fontSize: fontSize.sm,
+    marginTop: spacing.sm,
+    textAlign: 'center',
   },
   chartHeader: {
     flexDirection: 'row',

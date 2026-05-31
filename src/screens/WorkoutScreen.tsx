@@ -25,7 +25,8 @@ import { useRecordsStore } from '../store/recordsStore';
 import { useUser } from '../store/userStore';
 import { Button, Card, ProgressBar, Modal, ConfirmModal } from '../components/ui';
 import { RestTimer } from '../components/ui/Timer';
-import { SetInput } from '../components';
+import { SetInput, LoadSuggestionBadge } from '../components';
+import { useLoadSuggestion } from '../hooks/useLoadSuggestion';
 import { useStopwatch } from '../hooks/useTimer';
 import { useToast } from '../components/ui/Toast';
 import { useHaptics } from '../hooks/useHaptics';
@@ -75,6 +76,12 @@ export const WorkoutScreen: React.FC<WorkoutScreenProps> = ({
   const ejercicioActual = useEjercicioActual();
   const seleccionSustitucion = useSeleccionSustitucion();
   const checkAndUpdatePR = useRecordsStore((state) => state.checkAndUpdatePR);
+
+  // 5.4a: sugerencia de carga para el ejercicio actual (heurística determinista,
+  // client-side). El hook se llama incondicionalmente (rules of hooks): si aún no
+  // hay ejercicio actual, pasa '' y el util devuelve `sin_datos`. Recalcula al
+  // cambiar de ejercicio (memo por ejercicioId dentro del hook).
+  const sugerencia = useLoadSuggestion(ejercicioActual?.ejercicioId ?? '');
 
   // Iniciar workout al montar
   useEffect(() => {
@@ -339,6 +346,11 @@ export const WorkoutScreen: React.FC<WorkoutScreenProps> = ({
             )}
           </View>
 
+          {/* 5.4a: sugerencia de carga para el próximo set/entreno (inline compacto) */}
+          <View style={styles.sugerenciaWrap}>
+            <LoadSuggestionBadge suggestion={sugerencia} compact />
+          </View>
+
           {/* 2.2: sustituir el ejercicio actual sin perder el progreso */}
           <TouchableOpacity
             style={styles.sustituirButton}
@@ -555,6 +567,9 @@ const styles = StyleSheet.create({
     fontFamily: fontFamily.regular,
     fontSize: 14,
     color: colors.textSecondary,
+  },
+  sugerenciaWrap: {
+    marginTop: 10,
   },
   sustituirButton: {
     flexDirection: 'row',

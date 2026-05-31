@@ -85,3 +85,7 @@ export const getMuscleGroupColor = (grupo: string): string => {
   };
   return colors[grupo.toLowerCase()] || '#9CA3AF';
 };
+
+// Progresión de cargas (Fase 5.4a) — util puro determinista.
+export { calcularSugerenciaCarga } from './progresion';
+export type { ProgresionInput } from './progresion';

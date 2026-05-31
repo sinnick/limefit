@@ -393,3 +393,16 @@ export interface Anuncio {
   fechaPublicacion: string;  // <- FECHA_PUBLICACION (ISO)
   audiencia: string;         // <- AUDIENCIA
 }
+
+// --- Fase 5.4a Progresión de cargas (heurística determinista) -----------
+export type CambioCarga = 'subir' | 'mantener' | 'bajar';
+export type BaseSugerencia = 'ultimo_entreno' | 'pr' | 'fallo_multiple' | 'sin_datos';
+
+export interface LoadSuggestion {
+  pesoSugerido: number;        // kg recomendados para el próximo entrenamiento (redondeado a 0.25)
+  pesoBase: number;            // peso de referencia usado (último set válido o PR)
+  cambio: CambioCarga;         // dirección
+  deltaKg: number;             // pesoSugerido - pesoBase (puede ser 0 o negativo)
+  razon: string;               // texto corto en español para UI (ej. "RPE bajo, sube 2.5 kg")
+  basadoEn: BaseSugerencia;    // trazabilidad de la decisión
+}
