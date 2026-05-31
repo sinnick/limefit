@@ -27,6 +27,19 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     ios: {
       supportsTablet: true,
       bundleIdentifier: n.bundleIdentifier,
+      infoPlist: {
+        // ATS: permitir HTTP a redes locales + excepción explícita para localhost
+        // (backend de desarrollo en http://localhost:3000). No afecta producción.
+        NSAppTransportSecurity: {
+          NSAllowsLocalNetworking: true,
+          NSExceptionDomains: {
+            localhost: {
+              NSExceptionAllowsInsecureHTTPLoads: true,
+              NSIncludesSubdomains: true,
+            },
+          },
+        },
+      },
     },
     android: {
       package: n.androidPackage,
