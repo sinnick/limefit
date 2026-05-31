@@ -91,6 +91,9 @@ export const useRecordsStore = create<RecordsState>()(
             peso,
             reps,
             fecha: new Date().toISOString(),
+            // Este record SOLO se crea cuando esNuevoRecord es true → es un PR.
+            // Sin esto, recordToBatchItem lo subía con ES_RECORD=false.
+            esRecord: true,
           };
 
           addRecord(nuevoRecord);
