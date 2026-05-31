@@ -25,9 +25,10 @@ interface RecordsScreenProps {
 interface RecordCardProps {
   record: Record;
   index: number;
+  onPress?: () => void;
 }
 
-const RecordCard: React.FC<RecordCardProps> = ({ record, index }) => {
+const RecordCard: React.FC<RecordCardProps> = ({ record, index, onPress }) => {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const translateX = useRef(new Animated.Value(50)).current;
 
@@ -55,6 +56,7 @@ const RecordCard: React.FC<RecordCardProps> = ({ record, index }) => {
 
   return (
     <Animated.View style={{ opacity: fadeAnim, transform: [{ translateX }] }}>
+      <TouchableOpacity activeOpacity={0.85} onPress={onPress} disabled={!onPress}>
       <Card variant="elevated" padding="lg" style={styles.recordCard}>
         <View style={styles.cardHeader}>
           <View style={styles.trophyContainer}>
@@ -94,6 +96,7 @@ const RecordCard: React.FC<RecordCardProps> = ({ record, index }) => {
           </View>
         )}
       </Card>
+      </TouchableOpacity>
     </Animated.View>
   );
 };
@@ -215,7 +218,16 @@ export const RecordsScreen: React.FC<RecordsScreenProps> = ({ navigation }) => {
         <FlashList
           data={bestRecords}
           renderItem={({ item, index }) => (
-            <RecordCard record={item} index={index} />
+            <RecordCard
+              record={item}
+              index={index}
+              onPress={() =>
+                navigation.navigate('RecordDetail', {
+                  ejercicioId: item.ejercicioId,
+                  ejercicioNombre: item.ejercicioNombre,
+                })
+              }
+            />
           )}
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
