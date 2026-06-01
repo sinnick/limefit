@@ -8,6 +8,7 @@ import {
   Animated,
 } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors, fontFamily, shadows } from '../constants/theme';
@@ -103,6 +104,7 @@ const RecordCard: React.FC<RecordCardProps> = ({ record, index, onPress }) => {
 
 export const RecordsScreen: React.FC<RecordsScreenProps> = ({ navigation }) => {
   const user = useUser();
+  const insets = useSafeAreaInsets();
   const records = useRecords();
   const { isLoading, refetch, isRefetching } = useRecordsQuery(user?.DNI || '');
 
@@ -223,7 +225,7 @@ export const RecordsScreen: React.FC<RecordsScreenProps> = ({ navigation }) => {
               }
             />
           )}
-          contentContainerStyle={styles.listContent}
+          contentContainerStyle={[styles.listContent, { paddingBottom: insets.bottom + 16 }]}
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl
@@ -298,7 +300,6 @@ const styles = StyleSheet.create({
   },
   listContent: {
     paddingHorizontal: 20,
-    paddingBottom: 20,
   },
   recordCard: {
     marginBottom: 16,

@@ -10,6 +10,7 @@ import {
   Animated,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors, fontFamily, shadows } from '../constants/theme';
@@ -90,6 +91,7 @@ const MenuCard: React.FC<MenuCardProps> = ({
 
 export const InicioScreen: React.FC<InicioScreenProps> = ({ navigation }) => {
   const user = useUser();
+  const insets = useSafeAreaInsets();
   const logout = useUserStore((state) => state.logout);
   const rutinas = useRutinas();
   const historial = useHistorialWorkouts();
@@ -194,7 +196,7 @@ export const InicioScreen: React.FC<InicioScreenProps> = ({ navigation }) => {
     <View style={styles.container}>
       <ScrollView
         style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 16 }]}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
@@ -448,9 +450,7 @@ const styles = StyleSheet.create({
   scrollView: {
     flex: 1,
   },
-  scrollContent: {
-    paddingBottom: 32,
-  },
+  scrollContent: {},
   syncRow: {
     paddingHorizontal: 20,
     marginBottom: 16,

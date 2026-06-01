@@ -146,7 +146,6 @@ export const EditarPerfilScreen: React.FC<EditarPerfilScreenProps> = ({ navigati
         },
         scrollContent: {
           paddingHorizontal: 20,
-          paddingBottom: 48,
         },
         avatarSection: {
           alignItems: 'center',
@@ -234,7 +233,7 @@ export const EditarPerfilScreen: React.FC<EditarPerfilScreenProps> = ({ navigati
       </View>
 
       <ScrollView
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 24 }]}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >

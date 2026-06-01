@@ -164,7 +164,7 @@ export const MetricasScreen: React.FC<MetricasScreenProps> = ({ navigation }) =>
       </View>
 
       <ScrollView
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 24 }]}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
         refreshControl={
@@ -398,7 +398,6 @@ const makeStyles = (colors: ReturnType<typeof useTheme>['colors']) =>
     },
     scrollContent: {
       paddingHorizontal: spacing.md,
-      paddingBottom: 40,
       gap: spacing.md,
     },
     sectionTitle: {

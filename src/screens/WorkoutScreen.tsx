@@ -390,7 +390,7 @@ export const WorkoutScreen: React.FC<WorkoutScreenProps> = ({
       {/* Sets */}
       <ScrollView
         style={styles.setsContainer}
-        contentContainerStyle={styles.setsContent}
+        contentContainerStyle={[styles.setsContent, { paddingBottom: 120 + insets.bottom }]}
         showsVerticalScrollIndicator={false}
       >
         {Array.from({ length: ejercicioActual.setsObjetivo }).map((_, index) => {
@@ -415,7 +415,7 @@ export const WorkoutScreen: React.FC<WorkoutScreenProps> = ({
       {/* Finish Button */}
       {progress >= 50 && (
         <Animated.View
-          style={[styles.finishButtonContainer, { opacity: buttonAnim, transform: [{ translateY: buttonTranslateY }] }]}
+          style={[styles.finishButtonContainer, { opacity: buttonAnim, transform: [{ translateY: buttonTranslateY }], paddingBottom: insets.bottom + 16 }]}
         >
           <Button
             title={progress === 100 ? 'Finalizar Entrenamiento' : 'Terminar Antes'}
@@ -594,7 +594,6 @@ const styles = StyleSheet.create({
   },
   setsContent: {
     padding: 20,
-    paddingBottom: 120,
   },
   finishButtonContainer: {
     position: 'absolute',
@@ -602,7 +601,6 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     padding: 20,
-    paddingBottom: 36,
     backgroundColor: colors.background,
     borderTopWidth: 1,
     borderTopColor: colors.border,

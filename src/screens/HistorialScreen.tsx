@@ -7,6 +7,7 @@ import {
   Animated,
 } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors, fontFamily, shadows } from '../constants/theme';
@@ -94,6 +95,7 @@ const WorkoutCard: React.FC<WorkoutCardProps> = ({ workout, index }) => {
 
 export const HistorialScreen: React.FC<HistorialScreenProps> = ({ navigation }) => {
   const historial = useHistorialWorkouts();
+  const insets = useSafeAreaInsets();
 
   // Agrupar por mes
   const groupedByMonth = historial.reduce((acc, workout) => {
@@ -132,7 +134,7 @@ export const HistorialScreen: React.FC<HistorialScreenProps> = ({ navigation }) 
           renderItem={({ item, index }) => (
             <WorkoutCard workout={item} index={index} />
           )}
-          contentContainerStyle={styles.listContent}
+          contentContainerStyle={[styles.listContent, { paddingBottom: insets.bottom + 16 }]}
           showsVerticalScrollIndicator={false}
         />
       )}
@@ -147,7 +149,6 @@ const styles = StyleSheet.create({
   },
   listContent: {
     paddingHorizontal: 20,
-    paddingBottom: 20,
   },
   workoutCard: {
     marginBottom: 16,

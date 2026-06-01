@@ -163,7 +163,7 @@ export const LoginScreen: React.FC = () => {
         </Animated.View>
 
         {/* Footer */}
-        <View style={styles.footer}>
+        <View style={[styles.footer, { bottom: insets.bottom + 12 }]}>
           <Text style={styles.versionText}>{APP_CONFIG.name} v{APP_CONFIG.version}</Text>
         </View>
       </KeyboardAvoidingView>
@@ -264,7 +264,6 @@ const styles = StyleSheet.create({
   },
   footer: {
     position: 'absolute',
-    bottom: 32,
     left: 0,
     right: 0,
     alignItems: 'center',

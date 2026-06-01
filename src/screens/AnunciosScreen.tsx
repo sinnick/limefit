@@ -87,7 +87,9 @@ export const AnunciosScreen: React.FC<AnunciosScreenProps> = ({ navigation }) =>
         keyExtractor={(item) => item.id}
         renderItem={renderItem}
         contentContainerStyle={
-          anuncios.length === 0 ? styles.emptyContent : styles.listContent
+          anuncios.length === 0
+            ? styles.emptyContent
+            : [styles.listContent, { paddingBottom: insets.bottom + 24 }]
         }
         showsVerticalScrollIndicator={false}
         refreshControl={
@@ -137,7 +139,6 @@ const styles = StyleSheet.create({
   listContent: {
     paddingHorizontal: 20,
     paddingTop: 8,
-    paddingBottom: 40,
   },
   emptyContent: {
     flexGrow: 1,

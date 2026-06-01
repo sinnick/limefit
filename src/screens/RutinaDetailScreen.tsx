@@ -192,14 +192,14 @@ export const RutinaDetailScreen: React.FC<RutinaDetailScreenProps> = ({
             )}
             contentContainerStyle={styles.ejerciciosList}
             showsVerticalScrollIndicator={false}
-            ListFooterComponent={<View style={{ height: 120 }} />}
+            ListFooterComponent={<View style={{ height: 120 + insets.bottom }} />}
           />
         </Animated.View>
       )}
 
       {/* Start Workout Button */}
       <Animated.View
-        style={[styles.startButtonContainer, { opacity: buttonAnim, transform: [{ translateY: buttonTranslateY }] }]}
+        style={[styles.startButtonContainer, { opacity: buttonAnim, transform: [{ translateY: buttonTranslateY }], paddingBottom: insets.bottom + 16 }]}
       >
         <Button
           title="Comenzar Entrenamiento"
@@ -321,7 +321,6 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     padding: 20,
-    paddingBottom: 36,
     backgroundColor: colors.background,
     borderTopWidth: 1,
     borderTopColor: colors.border,

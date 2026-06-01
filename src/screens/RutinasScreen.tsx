@@ -8,6 +8,7 @@ import {
   Animated,
 } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors, fontFamily, shadows } from '../constants/theme';
@@ -114,6 +115,7 @@ export const RutinasScreen: React.FC<RutinasScreenProps> = ({ navigation }) => {
   // El store guarda las rutinas ASIGNADAS al socio (CONTRACT b.2). useRutinasQuery
   // las trae con rutinasApi.getMisRutinasAsignadas(dni) y las vuelca al store.
   const rutinas = useRutinas();
+  const insets = useSafeAreaInsets();
   const { isLoading, isError, refetch, isRefetching } = useRutinasQuery();
 
   const handleRutinaPress = (rutina: Rutina) => {
@@ -159,7 +161,7 @@ export const RutinasScreen: React.FC<RutinasScreenProps> = ({ navigation }) => {
               onPress={() => handleRutinaPress(item)}
             />
           )}
-          contentContainerStyle={styles.listContent}
+          contentContainerStyle={[styles.listContent, { paddingBottom: insets.bottom + 16 }]}
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl
@@ -182,7 +184,6 @@ const styles = StyleSheet.create({
   },
   listContent: {
     paddingHorizontal: 20,
-    paddingBottom: 20,
   },
   rutinaCard: {
     marginBottom: 16,

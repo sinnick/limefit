@@ -109,7 +109,7 @@ export const CalendarioScreen: React.FC<CalendarioScreenProps> = ({ navigation }
       </View>
 
       <ScrollView
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 24 }]}
         showsVerticalScrollIndicator={false}
       >
         <View style={shadows.md}>
@@ -210,7 +210,6 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: 20,
-    paddingBottom: 32,
   },
   detailCard: {
     marginTop: spacing.lg,
