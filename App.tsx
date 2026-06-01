@@ -40,6 +40,8 @@ import MembresiaScreen from './src/screens/MembresiaScreen';
 import ClasesScreen from './src/screens/ClasesScreen';
 import MisReservasScreen from './src/screens/MisReservasScreen';
 import AnunciosScreen from './src/screens/AnunciosScreen';
+// Config de backend (engranaje del login, AuthStack).
+import BackendConfigScreen from './src/screens/BackendConfigScreen';
 
 // Providers
 import { ToastProvider } from './src/components/ui/Toast';
@@ -97,6 +99,11 @@ const Navigation: React.FC = () => {
           }}
         >
           <Stack.Screen name="Login" component={LoginScreen} />
+          <Stack.Screen
+            name="BackendConfig"
+            component={BackendConfigScreen}
+            options={{ animation: 'slide_from_right' }}
+          />
         </Stack.Navigator>
       ) : (
         // Main Stack

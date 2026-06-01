@@ -184,6 +184,7 @@ export interface RecordsResponse {
 // Navigation Types
 export type RootStackParamList = {
   Login: undefined;
+  BackendConfig: undefined; // engranaje del login: config de URL del backend
   Main: undefined;
   Inicio: undefined;
   Rutinas: undefined;

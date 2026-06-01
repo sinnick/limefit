@@ -8,11 +8,17 @@ import {
   Dimensions,
   StyleSheet,
   Animated,
+  TouchableOpacity,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { StatusBar } from 'expo-status-bar';
-import { colors, fontFamily } from '../constants/theme';
+import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { colors, fontFamily, spacing } from '../constants/theme';
 import { APP_CONFIG } from '../constants/config';
+import { RootStackParamList } from '../types';
 import { activeBrand } from '../../brands/registry';
 import { Button, Input } from '../components/ui';
 import { useLogin } from '../services/queries';
@@ -26,6 +32,8 @@ export const LoginScreen: React.FC = () => {
   const [error, setError] = useState('');
   const { mutate: login, isPending } = useLogin();
   const isAuthenticated = useUserStore((state) => state.isAuthenticated);
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const insets = useSafeAreaInsets();
 
   // Animations
   const logoScale = useRef(new Animated.Value(0)).current;
@@ -84,6 +92,16 @@ export const LoginScreen: React.FC = () => {
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
       />
+
+      {/* Engranaje → configuración del backend */}
+      <TouchableOpacity
+        style={[styles.settingsButton, { top: insets.top + 8 }]}
+        onPress={() => navigation.navigate('BackendConfig')}
+        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        accessibilityLabel="Configurar backend"
+      >
+        <Ionicons name="settings-outline" size={22} color={colors.textSecondary} />
+      </TouchableOpacity>
 
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -157,6 +175,17 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
+  },
+  settingsButton: {
+    position: 'absolute',
+    right: spacing.lg,
+    zIndex: 10,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.surface,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   content: {
     flex: 1,

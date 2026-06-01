@@ -36,7 +36,13 @@ export const STORAGE_KEYS = {
   SYNC_QUEUE: `${KEY_PREFIX}sync_queue`,
   // Caché de React Query persistida en MMKV (CONTRACT-fase5A §2.6).
   RQ_CACHE: `${KEY_PREFIX}rq_cache`,
+  // URL del backend configurable desde la pantalla de login (engranaje).
+  BACKEND_URL: `${KEY_PREFIX}backend_url`,
 } as const;
+
+// URL por defecto del backend (sin el sufijo /api, que la capa de red agrega).
+// Configurable en runtime desde BackendConfigScreen; persiste en MMKV.
+export const DEFAULT_BACKEND_URL = 'https://sinnick.dev/level';
 
 // Query Keys for React Query
 export const QUERY_KEYS = {

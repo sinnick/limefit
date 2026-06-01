@@ -1,5 +1,6 @@
 import axios, { AxiosError, AxiosInstance } from 'axios';
 import { API_BASE_URL, TENANT_ID } from '../constants/config';
+import { getApiBaseUrl } from './backendConfig';
 import {
   LoginResponse,
   RutinasResponse,
@@ -178,10 +179,13 @@ const api: AxiosInstance = axios.create({
   },
 });
 
-// Interceptor para logs de desarrollo
+// Interceptor: baseURL dinámica (configurable desde la pantalla de login) + logs.
+// La URL se lee del store en cada request, así un cambio en BackendConfigScreen
+// impacta sin reiniciar la app.
 api.interceptors.request.use(
   (config) => {
-    console.log(`[API][${TENANT_ID}] ${config.method?.toUpperCase()} ${config.url}`);
+    config.baseURL = getApiBaseUrl();
+    console.log(`[API][${TENANT_ID}] ${config.method?.toUpperCase()} ${config.baseURL}${config.url}`);
     return config;
   },
   (error) => {
