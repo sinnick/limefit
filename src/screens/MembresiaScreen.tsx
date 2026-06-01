@@ -8,6 +8,7 @@ import {
   RefreshControl,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors, fontFamily, shadows } from '../constants/theme';
 import { RootStackParamList } from '../types';
@@ -62,6 +63,7 @@ const formatDiasRestantes = (dias?: number): string => {
 };
 
 export const MembresiaScreen: React.FC<MembresiaScreenProps> = ({ navigation }) => {
+  const insets = useSafeAreaInsets();
   const user = useUser();
   const dni = user?.DNI ?? '';
 
@@ -82,7 +84,7 @@ export const MembresiaScreen: React.FC<MembresiaScreenProps> = ({ navigation }) 
   return (
     <View style={styles.container}>
       <TouchableOpacity
-        style={styles.backButton}
+        style={[styles.backButton, { top: insets.top + 8 }]}
         onPress={() => navigation.goBack()}
       >
         <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
@@ -90,7 +92,7 @@ export const MembresiaScreen: React.FC<MembresiaScreenProps> = ({ navigation }) 
 
       <ScrollView
         style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 60 }]}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
@@ -184,7 +186,6 @@ const styles = StyleSheet.create({
   },
   backButton: {
     position: 'absolute',
-    top: 60,
     left: 16,
     zIndex: 10,
     width: 44,
@@ -198,7 +199,6 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingTop: 120,
     paddingHorizontal: 20,
     paddingBottom: 40,
   },

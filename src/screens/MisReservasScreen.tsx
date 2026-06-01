@@ -8,6 +8,7 @@ import {
   RefreshControl,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AxiosError } from 'axios';
 import { RootStackParamList, Reserva } from '../types';
@@ -65,6 +66,7 @@ export const MisReservasScreen: React.FC<MisReservasScreenProps> = ({
   navigation,
 }) => {
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
   const toast = useToast();
   const user = useUser();
   const dni = user?.DNI ?? '';
@@ -145,7 +147,7 @@ export const MisReservasScreen: React.FC<MisReservasScreenProps> = ({
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
         <TouchableOpacity
           style={[styles.backButton, { backgroundColor: colors.surface }]}
           onPress={() => navigation.goBack()}
@@ -211,7 +213,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: spacing.md,
-    paddingTop: 56,
     paddingBottom: spacing.sm,
     gap: spacing.md,
   },

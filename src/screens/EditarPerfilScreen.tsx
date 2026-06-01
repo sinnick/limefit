@@ -10,6 +10,7 @@ import {
   Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { fontFamily } from '../constants/theme';
 import { useTheme } from '../hooks/useTheme';
@@ -56,6 +57,7 @@ const parsePeso = (text: string): number | undefined => {
 
 export const EditarPerfilScreen: React.FC<EditarPerfilScreenProps> = ({ navigation }) => {
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
   const user = useUser();
   const toast = useToast();
   const updateProfile = useUpdateProfile();
@@ -125,7 +127,6 @@ export const EditarPerfilScreen: React.FC<EditarPerfilScreenProps> = ({ navigati
         header: {
           flexDirection: 'row',
           alignItems: 'center',
-          paddingTop: 60,
           paddingHorizontal: 16,
           paddingBottom: 12,
         },
@@ -225,7 +226,7 @@ export const EditarPerfilScreen: React.FC<EditarPerfilScreenProps> = ({ navigati
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
         <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
           <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
         </TouchableOpacity>

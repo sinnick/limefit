@@ -9,6 +9,7 @@ import {
   Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp } from '@react-navigation/native';
 import { RootStackParamList } from '../types';
@@ -63,6 +64,7 @@ export const DetalleEjercicioScreen: React.FC<DetalleEjercicioScreenProps> = ({
   route,
 }) => {
   const { ejercicioId } = route.params;
+  const insets = useSafeAreaInsets();
   const { colors } = useTheme();
 
   const { data, isLoading, isError, refetch } = useDetalleEjercicioQuery(ejercicioId);
@@ -175,7 +177,7 @@ export const DetalleEjercicioScreen: React.FC<DetalleEjercicioScreenProps> = ({
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
         <TouchableOpacity
           style={[styles.backButton, { backgroundColor: colors.surface }]}
           onPress={() => navigation.goBack()}
@@ -208,7 +210,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: spacing.md,
-    paddingTop: 56,
     paddingBottom: spacing.md,
     gap: spacing.md,
   },

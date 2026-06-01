@@ -8,6 +8,7 @@ import {
   ScrollView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { fontFamily, spacing } from '../constants/theme';
 import { RootStackParamList, DiaSemana } from '../types';
@@ -36,6 +37,7 @@ const ORDEN: DiaSemana[] = [
 ];
 
 export const NotificacionesScreen: React.FC<Props> = ({ navigation }) => {
+  const insets = useSafeAreaInsets();
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const toast = useToast();
@@ -95,7 +97,7 @@ export const NotificacionesScreen: React.FC<Props> = ({ navigation }) => {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: insets.top + spacing.sm }]}>
         <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
           <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
@@ -160,7 +162,6 @@ const makeStyles = (colors: ReturnType<typeof useTheme>['colors']) =>
       flexDirection: 'row',
       alignItems: 'center',
       paddingHorizontal: spacing.md,
-      paddingTop: spacing.xl,
       paddingBottom: spacing.md,
       gap: spacing.sm,
     },

@@ -10,6 +10,7 @@ import {
   Switch,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors, fontFamily, shadows } from '../constants/theme';
 import { RootStackParamList } from '../types';
@@ -91,6 +92,7 @@ const AnimatedSection: React.FC<AnimatedSectionProps> = ({ children, delay }) =>
 };
 
 export const PerfilScreen: React.FC<PerfilScreenProps> = ({ navigation }) => {
+  const insets = useSafeAreaInsets();
   const user = useUser();
   const logout = useUserStore((state) => state.logout);
   const updateSettings = useUserStore((state) => state.updateSettings);
@@ -132,7 +134,7 @@ export const PerfilScreen: React.FC<PerfilScreenProps> = ({ navigation }) => {
   return (
     <View style={styles.container}>
       <TouchableOpacity
-        style={styles.backButton}
+        style={[styles.backButton, { top: insets.top + 8 }]}
         onPress={() => navigation.goBack()}
       >
         <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
@@ -140,7 +142,7 @@ export const PerfilScreen: React.FC<PerfilScreenProps> = ({ navigation }) => {
 
       <ScrollView
         style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 64 }]}
         showsVerticalScrollIndicator={false}
       >
         {/* Profile Header */}
@@ -357,7 +359,6 @@ const styles = StyleSheet.create({
   },
   backButton: {
     position: 'absolute',
-    top: 60,
     left: 16,
     zIndex: 10,
     width: 44,
@@ -371,7 +372,6 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingTop: 120,
     paddingHorizontal: 20,
     paddingBottom: 40,
   },

@@ -9,6 +9,7 @@ import {
   ListRenderItem,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors, fontFamily, shadows } from '../constants/theme';
 import { Anuncio, RootStackParamList } from '../types';
@@ -47,6 +48,7 @@ const AnuncioCard: React.FC<{ anuncio: Anuncio }> = ({ anuncio }) => (
 );
 
 export const AnunciosScreen: React.FC<AnunciosScreenProps> = ({ navigation }) => {
+  const insets = useSafeAreaInsets();
   const { data, isLoading, refetch, isRefetching } = useAnunciosQuery();
 
   // El backend ya ordena por FECHA_PUBLICACION DESC; re-ordenamos por las dudas.
@@ -69,7 +71,7 @@ export const AnunciosScreen: React.FC<AnunciosScreenProps> = ({ navigation }) =>
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
         <TouchableOpacity
           style={styles.backButton}
           onPress={() => navigation.goBack()}
@@ -116,7 +118,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingTop: 60,
     paddingHorizontal: 16,
     paddingBottom: 12,
   },

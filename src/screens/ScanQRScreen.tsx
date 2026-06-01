@@ -8,6 +8,7 @@ import {
   KeyboardAvoidingView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import {
   CameraView,
@@ -322,9 +323,16 @@ const Header: React.FC<{
   onBack: () => void;
   transparent?: boolean;
 }> = ({ colors, onBack, transparent }) => {
+  const insets = useSafeAreaInsets();
   const styles = makeStyles(colors);
   return (
-    <View style={[styles.header, transparent && styles.headerTransparent]}>
+    <View
+      style={[
+        styles.header,
+        { paddingTop: insets.top + spacing.sm },
+        transparent && styles.headerTransparent,
+      ]}
+    >
       <TouchableOpacity style={styles.backButton} onPress={onBack}>
         <Ionicons
           name="arrow-back"
@@ -348,7 +356,6 @@ const makeStyles = (colors: Palette) =>
     header: {
       flexDirection: 'row',
       alignItems: 'center',
-      paddingTop: Platform.OS === 'ios' ? spacing.xxl : spacing.lg,
       paddingHorizontal: spacing.md,
       paddingBottom: spacing.md,
       gap: spacing.sm,

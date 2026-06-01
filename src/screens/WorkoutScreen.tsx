@@ -10,6 +10,7 @@ import {
   Animated,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp, useFocusEffect } from '@react-navigation/native';
 import * as Haptics from 'expo-haptics';
@@ -43,6 +44,7 @@ export const WorkoutScreen: React.FC<WorkoutScreenProps> = ({
   route,
 }) => {
   const { rutina, diaId } = route.params;
+  const insets = useSafeAreaInsets();
   const user = useUser();
   const haptics = useHaptics();
   const toast = useToast();
@@ -285,7 +287,7 @@ export const WorkoutScreen: React.FC<WorkoutScreenProps> = ({
   return (
     <View style={styles.container}>
       {/* Header */}
-      <Animated.View style={[styles.header, { opacity: headerAnim }]}>
+      <Animated.View style={[styles.header, { opacity: headerAnim, paddingTop: insets.top + 8 }]}>
         <TouchableOpacity style={styles.backButton} onPress={handleBackPress}>
           <Ionicons name="close" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
@@ -472,7 +474,6 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingTop: 60,
     paddingHorizontal: 20,
     paddingBottom: 16,
     backgroundColor: colors.surface,

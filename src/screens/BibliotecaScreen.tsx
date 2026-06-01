@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp } from '@react-navigation/native';
 import { RootStackParamList, EjercicioBiblioteca } from '../types';
@@ -79,6 +80,7 @@ export const BibliotecaScreen: React.FC<BibliotecaScreenProps> = ({
   navigation,
   route,
 }) => {
+  const insets = useSafeAreaInsets();
   const { colors } = useTheme();
   const params = route.params ?? {};
   const modoSustitucion = !!params.modoSustitucion;
@@ -159,7 +161,7 @@ export const BibliotecaScreen: React.FC<BibliotecaScreenProps> = ({
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
         <TouchableOpacity
           style={[styles.backButton, { backgroundColor: colors.surface }]}
           onPress={() => navigation.goBack()}
@@ -316,7 +318,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: spacing.md,
-    paddingTop: 56,
     paddingBottom: spacing.sm,
     gap: spacing.md,
   },

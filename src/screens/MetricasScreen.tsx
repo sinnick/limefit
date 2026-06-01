@@ -10,6 +10,7 @@ import {
   Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { fontFamily, spacing } from '../constants/theme';
 import { useTheme } from '../hooks/useTheme';
@@ -49,6 +50,7 @@ const MEDIDAS_LABEL: Record<keyof MedidasCorporales, string> = {
 };
 
 export const MetricasScreen: React.FC<MetricasScreenProps> = ({ navigation }) => {
+  const insets = useSafeAreaInsets();
   const { colors } = useTheme();
   const user = useUser();
   const settings = useSettings();
@@ -146,7 +148,7 @@ export const MetricasScreen: React.FC<MetricasScreenProps> = ({ navigation }) =>
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
         <TouchableOpacity
           style={styles.backButton}
           onPress={() => navigation.goBack()}
@@ -369,7 +371,6 @@ const makeStyles = (colors: ReturnType<typeof useTheme>['colors']) =>
       flexDirection: 'row',
       alignItems: 'center',
       paddingHorizontal: spacing.md,
-      paddingTop: 56,
       paddingBottom: spacing.md,
       gap: spacing.sm,
     },

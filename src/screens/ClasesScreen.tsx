@@ -8,6 +8,7 @@ import {
   RefreshControl,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AxiosError } from 'axios';
 import { RootStackParamList, Clase } from '../types';
@@ -55,6 +56,7 @@ const errorMensaje = (err: unknown, fallback: string): string => {
 
 export const ClasesScreen: React.FC<ClasesScreenProps> = ({ navigation }) => {
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
   const toast = useToast();
   const user = useUser();
   const dni = user?.DNI ?? '';
@@ -171,7 +173,7 @@ export const ClasesScreen: React.FC<ClasesScreenProps> = ({ navigation }) => {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
         <TouchableOpacity
           style={[styles.backButton, { backgroundColor: colors.surface }]}
           onPress={() => navigation.goBack()}
@@ -241,7 +243,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: spacing.md,
-    paddingTop: 56,
     paddingBottom: spacing.sm,
     gap: spacing.md,
   },
