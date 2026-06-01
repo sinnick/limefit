@@ -8,6 +8,7 @@ import {
   Animated,
 } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors, fontFamily, shadows } from '../constants/theme';
@@ -47,8 +48,9 @@ const RutinaCard: React.FC<RutinaCardProps> = ({ rutina, index, onPress }) => {
     ]).start();
   }, [index, fadeAnim, translateX]);
 
-  const totalEjercicios = rutina.dias.reduce(
-    (acc, dia) => acc + dia.ejercicios.length,
+  const dias = rutina.dias ?? [];
+  const totalEjercicios = dias.reduce(
+    (acc, dia) => acc + (dia.ejercicios?.length ?? 0),
     0
   );
 
@@ -74,7 +76,7 @@ const RutinaCard: React.FC<RutinaCardProps> = ({ rutina, index, onPress }) => {
           <View style={styles.cardStats}>
             <View style={styles.statItem}>
               <Ionicons name="calendar-outline" size={18} color={colors.lime} />
-              <Text style={styles.statText}>{rutina.dias.length} días</Text>
+              <Text style={styles.statText}>{dias.length} días</Text>
             </View>
             <View style={styles.statItem}>
               <Ionicons name="fitness-outline" size={18} color={colors.lime} />
@@ -88,9 +90,9 @@ const RutinaCard: React.FC<RutinaCardProps> = ({ rutina, index, onPress }) => {
             )}
           </View>
 
-          {rutina.dias.length > 0 && (
+          {dias.length > 0 && (
             <View style={styles.diasPreview}>
-              {rutina.dias.slice(0, 3).map((dia, idx) => (
+              {dias.slice(0, 3).map((dia, idx) => (
                 <Badge
                   key={dia.id || idx}
                   text={dia.nombre}
@@ -98,8 +100,8 @@ const RutinaCard: React.FC<RutinaCardProps> = ({ rutina, index, onPress }) => {
                   size="sm"
                 />
               ))}
-              {rutina.dias.length > 3 && (
-                <Badge text={`+${rutina.dias.length - 3}`} variant="default" size="sm" />
+              {dias.length > 3 && (
+                <Badge text={`+${dias.length - 3}`} variant="default" size="sm" />
               )}
             </View>
           )}
@@ -110,14 +112,19 @@ const RutinaCard: React.FC<RutinaCardProps> = ({ rutina, index, onPress }) => {
 };
 
 export const RutinasScreen: React.FC<RutinasScreenProps> = ({ navigation }) => {
+  // El store guarda las rutinas ASIGNADAS al socio (CONTRACT b.2). useRutinasQuery
+  // las trae con rutinasApi.getMisRutinasAsignadas(dni) y las vuelca al store.
   const rutinas = useRutinas();
-  const { isLoading, refetch, isRefetching } = useRutinasQuery();
+  const insets = useSafeAreaInsets();
+  const { isLoading, isError, refetch, isRefetching } = useRutinasQuery();
 
   const handleRutinaPress = (rutina: Rutina) => {
     navigation.navigate('Rutina', { rutina });
   };
 
-  if (isLoading) {
+  // Carga: solo cuando la query está pidiendo y todavía no hay nada cacheado en
+  // MMKV (evita mostrar rutinas del socio anterior mientras llega la respuesta).
+  if (isLoading && rutinas.length === 0) {
     return <Loading fullScreen message="Cargando rutinas..." />;
   }
 
@@ -125,22 +132,24 @@ export const RutinasScreen: React.FC<RutinasScreenProps> = ({ navigation }) => {
     <View style={styles.container}>
       <UserHeader
         title="Mis Rutinas"
-        subtitle={`${rutinas.length} rutinas disponibles`}
+        subtitle={`${rutinas.length} rutinas asignadas`}
         showSettings={false}
+        onBack={() => navigation.goBack()}
       />
 
-      <TouchableOpacity
-        style={styles.backButton}
-        onPress={() => navigation.goBack()}
-      >
-        <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
-      </TouchableOpacity>
-
-      {rutinas.length === 0 ? (
+      {isError && rutinas.length === 0 ? (
+        <EmptyState
+          icon="cloud-offline-outline"
+          title="No pudimos cargar tus rutinas"
+          description="Revisá tu conexión e intentá de nuevo."
+          actionLabel="Reintentar"
+          onAction={() => refetch()}
+        />
+      ) : rutinas.length === 0 ? (
         <EmptyState
           icon="barbell-outline"
           title="No tienes rutinas"
-          description="Aún no se han creado rutinas para ti. Contacta al gimnasio para que te asignen una."
+          description="Aún no se te ha asignado ninguna rutina. Contacta al gimnasio para que te asignen una."
         />
       ) : (
         <FlashList
@@ -152,8 +161,7 @@ export const RutinasScreen: React.FC<RutinasScreenProps> = ({ navigation }) => {
               onPress={() => handleRutinaPress(item)}
             />
           )}
-          estimatedItemSize={180}
-          contentContainerStyle={styles.listContent}
+          contentContainerStyle={[styles.listContent, { paddingBottom: insets.bottom + 16 }]}
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl
@@ -174,21 +182,8 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
-  backButton: {
-    position: 'absolute',
-    top: 16,
-    left: 16,
-    zIndex: 10,
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: colors.surface,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
   listContent: {
     paddingHorizontal: 20,
-    paddingBottom: 20,
   },
   rutinaCard: {
     marginBottom: 16,

@@ -28,7 +28,7 @@ export const useTimer = (options: UseTimerOptions = {}): UseTimerReturn => {
   const [isRunning, setIsRunning] = useState(autoStart);
   const [isPaused, setIsPaused] = useState(false);
 
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const onCompleteRef = useRef(onComplete);
 
   // Actualizar ref cuando cambia onComplete
@@ -130,7 +130,7 @@ export const useTimer = (options: UseTimerOptions = {}): UseTimerReturn => {
 export const useStopwatch = () => {
   const [tiempo, setTiempo] = useState(0);
   const [isRunning, setIsRunning] = useState(false);
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     if (isRunning) {

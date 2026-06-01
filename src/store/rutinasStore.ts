@@ -11,6 +11,7 @@ interface RutinasState {
 
   // Actions
   setRutinas: (rutinas: Rutina[]) => void;
+  clearRutinas: () => void;
   addRutina: (rutina: Rutina) => void;
   updateRutina: (rutinaId: string, updates: Partial<Rutina>) => void;
   deleteRutina: (rutinaId: string) => void;
@@ -38,7 +39,13 @@ export const useRutinasStore = create<RutinasState>()(
       diaActivo: null,
       isLoading: false,
 
+      // El store guarda SOLO las rutinas ASIGNADAS al socio (CONTRACT b.2),
+      // que llegan vía rutinasApi.getMisRutinasAsignadas(dni) (ver useRutinasQuery).
       setRutinas: (rutinas) => set({ rutinas }),
+
+      // Limpia las rutinas asignadas cacheadas en MMKV. Necesario al desloguear o
+      // cambiar de socio para no mostrar las rutinas del socio anterior.
+      clearRutinas: () => set({ rutinas: [], rutinaActiva: null, diaActivo: null }),
 
       addRutina: (rutina) =>
         set((state) => ({
@@ -141,3 +148,4 @@ export const useRutinasStore = create<RutinasState>()(
 export const useRutinas = () => useRutinasStore((state) => state.rutinas);
 export const useRutinaActiva = () => useRutinasStore((state) => state.rutinaActiva);
 export const useDiaActivo = () => useRutinasStore((state) => state.diaActivo);
+export const useClearRutinas = () => useRutinasStore((state) => state.clearRutinas);

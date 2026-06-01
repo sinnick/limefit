@@ -10,17 +10,24 @@ import {
   Animated,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RouteProp } from '@react-navigation/native';
+import { RouteProp, useFocusEffect } from '@react-navigation/native';
 import * as Haptics from 'expo-haptics';
 import { colors, fontFamily, shadows } from '../constants/theme';
-import { RootStackParamList, SetCompletado, EjercicioWorkout } from '../types';
-import { useWorkoutStore, useWorkoutActivo, useEjercicioActual } from '../store/workoutStore';
+import { RootStackParamList, SetCompletado, EjercicioWorkout, WorkoutCompletado } from '../types';
+import {
+  useWorkoutStore,
+  useWorkoutActivo,
+  useEjercicioActual,
+  useSeleccionSustitucion,
+} from '../store/workoutStore';
 import { useRecordsStore } from '../store/recordsStore';
 import { useUser } from '../store/userStore';
 import { Button, Card, ProgressBar, Modal, ConfirmModal } from '../components/ui';
 import { RestTimer } from '../components/ui/Timer';
-import { SetInput } from '../components';
+import { SetInput, LoadSuggestionBadge } from '../components';
+import { useLoadSuggestion } from '../hooks/useLoadSuggestion';
 import { useStopwatch } from '../hooks/useTimer';
 import { useToast } from '../components/ui/Toast';
 import { useHaptics } from '../hooks/useHaptics';
@@ -37,6 +44,7 @@ export const WorkoutScreen: React.FC<WorkoutScreenProps> = ({
   route,
 }) => {
   const { rutina, diaId } = route.params;
+  const insets = useSafeAreaInsets();
   const user = useUser();
   const haptics = useHaptics();
   const toast = useToast();
@@ -45,6 +53,9 @@ export const WorkoutScreen: React.FC<WorkoutScreenProps> = ({
   const [showRestTimer, setShowRestTimer] = useState(false);
   const [showExitModal, setShowExitModal] = useState(false);
   const [showSummaryModal, setShowSummaryModal] = useState(false);
+  // El resumen se guarda local: finalizarWorkout() limpia workoutActivo (workout
+  // pasa a null), así que el modal no puede leer `workout` — lee `summary`.
+  const [summary, setSummary] = useState<WorkoutCompletado | null>(null);
 
   const headerAnim = useRef(new Animated.Value(0)).current;
   const ejercicioAnim = useRef(new Animated.Value(0)).current;
@@ -59,11 +70,20 @@ export const WorkoutScreen: React.FC<WorkoutScreenProps> = ({
     completarSet,
     siguienteEjercicio,
     anteriorEjercicio,
+    sustituirEjercicio,
+    limpiarSeleccionSustitucion,
   } = useWorkoutStore();
 
   const workout = useWorkoutActivo();
   const ejercicioActual = useEjercicioActual();
+  const seleccionSustitucion = useSeleccionSustitucion();
   const checkAndUpdatePR = useRecordsStore((state) => state.checkAndUpdatePR);
+
+  // 5.4a: sugerencia de carga para el ejercicio actual (heurística determinista,
+  // client-side). El hook se llama incondicionalmente (rules of hooks): si aún no
+  // hay ejercicio actual, pasa '' y el util devuelve `sin_datos`. Recalcula al
+  // cambiar de ejercicio (memo por ejercicioId dentro del hook).
+  const sugerencia = useLoadSuggestion(ejercicioActual?.ejercicioId ?? '');
 
   // Iniciar workout al montar
   useEffect(() => {
@@ -163,8 +183,9 @@ export const WorkoutScreen: React.FC<WorkoutScreenProps> = ({
 
   const handleFinishWorkout = useCallback(() => {
     stopwatch.pause();
-    const summary = finalizarWorkout();
-    if (summary) {
+    const result = finalizarWorkout();
+    if (result) {
+      setSummary(result);
       setShowSummaryModal(true);
     }
   }, [finalizarWorkout, stopwatch]);
@@ -180,14 +201,93 @@ export const WorkoutScreen: React.FC<WorkoutScreenProps> = ({
     setShowExitModal(true);
   };
 
+  // 2.2: abrir la biblioteca en modo sustitución, filtrada por el grupo muscular
+  // del ejercicio actual (cuando se conozca), para sugerir reemplazos equivalentes.
+  const handleSustituir = useCallback(() => {
+    if (!workout || !ejercicioActual) return;
+    haptics.light();
+    // EjercicioWorkout no almacena grupo muscular (las rutinas no lo traen),
+    // así que abrimos sin filtro; el socio puede filtrar dentro de Biblioteca.
+    navigation.navigate('Biblioteca', {
+      modoSustitucion: true,
+      ejercicioIndex: workout.ejercicioActualIndex,
+    });
+  }, [workout, ejercicioActual, navigation, haptics]);
+
+  // 2.2: al recuperar el foco, si Biblioteca dejó una selección en el store,
+  // aplicar la sustitución (preserva setsCompletados[]) y limpiar el slot.
+  useFocusEffect(
+    useCallback(() => {
+      if (seleccionSustitucion) {
+        sustituirEjercicio(
+          seleccionSustitucion.ejercicioIndex,
+          seleccionSustitucion.ejercicio
+        );
+        limpiarSeleccionSustitucion();
+        toast.success(`Ejercicio sustituido por ${seleccionSustitucion.ejercicio.nombre}`);
+        haptics.medium();
+      }
+    }, [seleccionSustitucion, sustituirEjercicio, limpiarSeleccionSustitucion, toast, haptics])
+  );
+
+  const summaryModal = (
+    <Modal
+      visible={showSummaryModal}
+      onClose={() => {
+        setShowSummaryModal(false);
+        navigation.goBack();
+      }}
+      title="¡Entrenamiento Completado!"
+      size="md"
+      showCloseButton={false}
+    >
+      <View style={styles.summaryContent}>
+        <View style={styles.summaryIcon}>
+          <Ionicons name="trophy" size={64} color={colors.lime} />
+        </View>
+
+        <Text style={styles.summaryTitle}>¡Excelente trabajo!</Text>
+
+        <View style={styles.summaryStats}>
+          <View style={styles.summaryStat}>
+            <Ionicons name="time-outline" size={24} color={colors.lime} />
+            <Text style={styles.summaryStatValue}>{stopwatch.formatted}</Text>
+            <Text style={styles.summaryStatLabel}>Duración</Text>
+          </View>
+          <View style={styles.summaryStat}>
+            <Ionicons name="fitness-outline" size={24} color={colors.lime} />
+            <Text style={styles.summaryStatValue}>
+              {summary?.ejercicios.filter((e) => e.completado).length ?? 0}
+            </Text>
+            <Text style={styles.summaryStatLabel}>Ejercicios</Text>
+          </View>
+        </View>
+
+        <Button
+          title="Finalizar"
+          variant="primary"
+          size="lg"
+          fullWidth
+          onPress={() => {
+            setShowSummaryModal(false);
+            navigation.goBack();
+          }}
+        />
+      </View>
+    </Modal>
+  );
+
+  // Tras finalizar, workoutActivo queda null (workout === null): no hay sesión que
+  // renderizar, pero SÍ hay que mostrar el resumen. Si retornáramos null acá la
+  // pantalla quedaría en negro y el modal nunca aparecería.
   if (!workout || !ejercicioActual) {
-    return null;
+    return <View style={styles.container}>{summaryModal}</View>;
   }
 
   return (
     <View style={styles.container}>
       {/* Header */}
-      <Animated.View style={[styles.header, { opacity: headerAnim }]}>
+      <Animated.View style={[styles.header, { opacity: headerAnim, paddingTop: insets.top + 8 }]}>
         <TouchableOpacity style={styles.backButton} onPress={handleBackPress}>
           <Ionicons name="close" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
@@ -247,6 +347,21 @@ export const WorkoutScreen: React.FC<WorkoutScreenProps> = ({
               </Text>
             )}
           </View>
+
+          {/* 5.4a: sugerencia de carga para el próximo set/entreno (inline compacto) */}
+          <View style={styles.sugerenciaWrap}>
+            <LoadSuggestionBadge suggestion={sugerencia} compact />
+          </View>
+
+          {/* 2.2: sustituir el ejercicio actual sin perder el progreso */}
+          <TouchableOpacity
+            style={styles.sustituirButton}
+            onPress={handleSustituir}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="swap-horizontal" size={16} color={colors.lime} />
+            <Text style={styles.sustituirButtonText}>Sustituir</Text>
+          </TouchableOpacity>
         </Animated.View>
 
         <TouchableOpacity
@@ -275,7 +390,7 @@ export const WorkoutScreen: React.FC<WorkoutScreenProps> = ({
       {/* Sets */}
       <ScrollView
         style={styles.setsContainer}
-        contentContainerStyle={styles.setsContent}
+        contentContainerStyle={[styles.setsContent, { paddingBottom: 120 + insets.bottom }]}
         showsVerticalScrollIndicator={false}
       >
         {Array.from({ length: ejercicioActual.setsObjetivo }).map((_, index) => {
@@ -300,7 +415,7 @@ export const WorkoutScreen: React.FC<WorkoutScreenProps> = ({
       {/* Finish Button */}
       {progress >= 50 && (
         <Animated.View
-          style={[styles.finishButtonContainer, { opacity: buttonAnim, transform: [{ translateY: buttonTranslateY }] }]}
+          style={[styles.finishButtonContainer, { opacity: buttonAnim, transform: [{ translateY: buttonTranslateY }], paddingBottom: insets.bottom + 16 }]}
         >
           <Button
             title={progress === 100 ? 'Finalizar Entrenamiento' : 'Terminar Antes'}
@@ -345,51 +460,8 @@ export const WorkoutScreen: React.FC<WorkoutScreenProps> = ({
         variant="danger"
       />
 
-      {/* Summary Modal */}
-      <Modal
-        visible={showSummaryModal}
-        onClose={() => {
-          setShowSummaryModal(false);
-          navigation.goBack();
-        }}
-        title="¡Entrenamiento Completado!"
-        size="md"
-        showCloseButton={false}
-      >
-        <View style={styles.summaryContent}>
-          <View style={styles.summaryIcon}>
-            <Ionicons name="trophy" size={64} color={colors.lime} />
-          </View>
-
-          <Text style={styles.summaryTitle}>¡Excelente trabajo!</Text>
-
-          <View style={styles.summaryStats}>
-            <View style={styles.summaryStat}>
-              <Ionicons name="time-outline" size={24} color={colors.lime} />
-              <Text style={styles.summaryStatValue}>{stopwatch.formatted}</Text>
-              <Text style={styles.summaryStatLabel}>Duración</Text>
-            </View>
-            <View style={styles.summaryStat}>
-              <Ionicons name="fitness-outline" size={24} color={colors.lime} />
-              <Text style={styles.summaryStatValue}>
-                {workout.ejercicios.filter((e) => e.completado).length}
-              </Text>
-              <Text style={styles.summaryStatLabel}>Ejercicios</Text>
-            </View>
-          </View>
-
-          <Button
-            title="Finalizar"
-            variant="primary"
-            size="lg"
-            fullWidth
-            onPress={() => {
-              setShowSummaryModal(false);
-              navigation.goBack();
-            }}
-          />
-        </View>
-      </Modal>
+      {/* Summary Modal (definido arriba; también se renderiza en el early-return) */}
+      {summaryModal}
     </View>
   );
 };
@@ -402,7 +474,6 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingTop: 60,
     paddingHorizontal: 20,
     paddingBottom: 16,
     backgroundColor: colors.surface,
@@ -498,12 +569,31 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.textSecondary,
   },
+  sugerenciaWrap: {
+    marginTop: 10,
+  },
+  sustituirButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.lime,
+  },
+  sustituirButtonText: {
+    fontFamily: fontFamily.medium,
+    fontSize: 13,
+    color: colors.lime,
+  },
   setsContainer: {
     flex: 1,
   },
   setsContent: {
     padding: 20,
-    paddingBottom: 120,
   },
   finishButtonContainer: {
     position: 'absolute',
@@ -511,7 +601,6 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     padding: 20,
-    paddingBottom: 36,
     backgroundColor: colors.background,
     borderTopWidth: 1,
     borderTopColor: colors.border,

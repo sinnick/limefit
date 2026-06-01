@@ -8,7 +8,7 @@ import {
   TouchableOpacityProps,
 } from 'react-native';
 import { useHaptics } from '../../hooks/useHaptics';
-import { colors } from '../../constants/theme';
+import { colors, fontFamily } from '../../constants/theme';
 
 type ButtonVariant = 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger';
 type ButtonSize = 'sm' | 'md' | 'lg';
@@ -138,7 +138,7 @@ export const Button: React.FC<ButtonProps> = ({
   };
 
   const textStyle: TextStyle = {
-    fontFamily: 'Work-Sans-Bold',
+    fontFamily: fontFamily.bold,
     textAlign: 'center',
     ...sizeStyle.text,
     ...variantStyle.text,

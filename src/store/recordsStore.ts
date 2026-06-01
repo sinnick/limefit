@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { zustandStorage } from './storage';
+import { syncQueue } from '../services/syncQueue';
 import { Record, PersonalRecord } from '../types';
 
 interface RecordsState {
@@ -90,9 +91,18 @@ export const useRecordsStore = create<RecordsState>()(
             peso,
             reps,
             fecha: new Date().toISOString(),
+            // Este record SOLO se crea cuando esNuevoRecord es true → es un PR.
+            // Sin esto, recordToBatchItem lo subía con ES_RECORD=false.
+            esRecord: true,
           };
 
           addRecord(nuevoRecord);
+
+          // Offline-first (CONTRACT c.3): al detectar un PR, encolar el record para
+          // subir. clientId = id local ya generado. Síncrono y no bloqueante; el
+          // flush sube cuando hay red (o reintenta con backoff). El DNI lo resuelve
+          // la cola desde el userStore (el record nace con dni '').
+          syncQueue.enqueueRecord(nuevoRecord);
 
           const nuevoPR: PersonalRecord = {
             ejercicioId,

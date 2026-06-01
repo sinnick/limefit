@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, Image, ViewStyle, TextStyle } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, fontFamily } from '../constants/theme';
 import { useUser } from '../store/userStore';
 
@@ -9,6 +10,9 @@ interface UserHeaderProps {
   showSettings?: boolean;
   title?: string;
   subtitle?: string;
+  // Si se pasa, se muestra un botón de volver a la izquierda del avatar (dentro
+  // del header, por lo que respeta el safe area sin overlays absolutos sueltos).
+  onBack?: () => void;
 }
 
 export const UserHeader: React.FC<UserHeaderProps> = ({
@@ -16,15 +20,19 @@ export const UserHeader: React.FC<UserHeaderProps> = ({
   showSettings = true,
   title,
   subtitle,
+  onBack,
 }) => {
   const user = useUser();
+  const insets = useSafeAreaInsets();
 
   const containerStyle: ViewStyle = {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingVertical: 16,
+    // Respetar el área segura superior (status bar / Dynamic Island).
+    paddingTop: insets.top + 16,
+    paddingBottom: 16,
   };
 
   const leftContainerStyle: ViewStyle = {
@@ -89,6 +97,16 @@ export const UserHeader: React.FC<UserHeaderProps> = ({
     alignItems: 'center',
   };
 
+  const backButtonStyle: ViewStyle = {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.surface,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  };
+
   const getGreeting = (): string => {
     const hour = new Date().getHours();
     if (hour < 12) return 'Buenos días';
@@ -105,6 +123,11 @@ export const UserHeader: React.FC<UserHeaderProps> = ({
   return (
     <View style={containerStyle}>
       <View style={leftContainerStyle}>
+        {onBack && (
+          <TouchableOpacity onPress={onBack} style={backButtonStyle} accessibilityLabel="Volver">
+            <Ionicons name="arrow-back" size={22} color={colors.textPrimary} />
+          </TouchableOpacity>
+        )}
         <View style={avatarStyle}>
           {user?.FOTO ? (
             <Image source={{ uri: user.FOTO }} style={avatarImageStyle} />

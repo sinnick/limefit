@@ -8,6 +8,7 @@ import {
   Animated,
 } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors, fontFamily, shadows } from '../constants/theme';
@@ -25,9 +26,10 @@ interface RecordsScreenProps {
 interface RecordCardProps {
   record: Record;
   index: number;
+  onPress?: () => void;
 }
 
-const RecordCard: React.FC<RecordCardProps> = ({ record, index }) => {
+const RecordCard: React.FC<RecordCardProps> = ({ record, index, onPress }) => {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const translateX = useRef(new Animated.Value(50)).current;
 
@@ -55,6 +57,7 @@ const RecordCard: React.FC<RecordCardProps> = ({ record, index }) => {
 
   return (
     <Animated.View style={{ opacity: fadeAnim, transform: [{ translateX }] }}>
+      <TouchableOpacity activeOpacity={0.85} onPress={onPress} disabled={!onPress}>
       <Card variant="elevated" padding="lg" style={styles.recordCard}>
         <View style={styles.cardHeader}>
           <View style={styles.trophyContainer}>
@@ -94,12 +97,14 @@ const RecordCard: React.FC<RecordCardProps> = ({ record, index }) => {
           </View>
         )}
       </Card>
+      </TouchableOpacity>
     </Animated.View>
   );
 };
 
 export const RecordsScreen: React.FC<RecordsScreenProps> = ({ navigation }) => {
   const user = useUser();
+  const insets = useSafeAreaInsets();
   const records = useRecords();
   const { isLoading, refetch, isRefetching } = useRecordsQuery(user?.DNI || '');
 
@@ -155,14 +160,8 @@ export const RecordsScreen: React.FC<RecordsScreenProps> = ({ navigation }) => {
         title="Mis Records"
         subtitle={`${totalPRs} PRs personales`}
         showSettings={false}
+        onBack={() => navigation.goBack()}
       />
-
-      <TouchableOpacity
-        style={styles.backButton}
-        onPress={() => navigation.goBack()}
-      >
-        <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
-      </TouchableOpacity>
 
       {/* Stats Summary */}
       <Animated.View style={[styles.statsContainer, { opacity: statsAnim }]}>
@@ -215,10 +214,18 @@ export const RecordsScreen: React.FC<RecordsScreenProps> = ({ navigation }) => {
         <FlashList
           data={bestRecords}
           renderItem={({ item, index }) => (
-            <RecordCard record={item} index={index} />
+            <RecordCard
+              record={item}
+              index={index}
+              onPress={() =>
+                navigation.navigate('RecordDetail', {
+                  ejercicioId: item.ejercicioId,
+                  ejercicioNombre: item.ejercicioNombre,
+                })
+              }
+            />
           )}
-          estimatedItemSize={160}
-          contentContainerStyle={styles.listContent}
+          contentContainerStyle={[styles.listContent, { paddingBottom: insets.bottom + 16 }]}
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl
@@ -238,18 +245,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
-  },
-  backButton: {
-    position: 'absolute',
-    top: 16,
-    left: 16,
-    zIndex: 10,
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: colors.surface,
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   statsContainer: {
     paddingHorizontal: 20,
@@ -305,7 +300,6 @@ const styles = StyleSheet.create({
   },
   listContent: {
     paddingHorizontal: 20,
-    paddingBottom: 20,
   },
   recordCard: {
     marginBottom: 16,

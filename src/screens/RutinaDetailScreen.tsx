@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp } from '@react-navigation/native';
 import { colors, fontFamily, shadows } from '../constants/theme';
@@ -62,6 +63,7 @@ export const RutinaDetailScreen: React.FC<RutinaDetailScreenProps> = ({
   const { rutina } = route.params;
   const [selectedDiaIndex, setSelectedDiaIndex] = useState(0);
   const haptics = useHaptics();
+  const insets = useSafeAreaInsets();
 
   const headerAnim = useRef(new Animated.Value(0)).current;
   const diasAnim = useRef(new Animated.Value(0)).current;
@@ -133,7 +135,7 @@ export const RutinaDetailScreen: React.FC<RutinaDetailScreenProps> = ({
   return (
     <View style={styles.container}>
       {/* Header */}
-      <Animated.View style={[styles.header, { opacity: headerAnim }]}>
+      <Animated.View style={[styles.header, { opacity: headerAnim, paddingTop: insets.top + 8 }]}>
         <TouchableOpacity
           style={styles.backButton}
           onPress={() => navigation.goBack()}
@@ -188,17 +190,16 @@ export const RutinaDetailScreen: React.FC<RutinaDetailScreenProps> = ({
                 showDetails={false}
               />
             )}
-            estimatedItemSize={100}
             contentContainerStyle={styles.ejerciciosList}
             showsVerticalScrollIndicator={false}
-            ListFooterComponent={<View style={{ height: 120 }} />}
+            ListFooterComponent={<View style={{ height: 120 + insets.bottom }} />}
           />
         </Animated.View>
       )}
 
       {/* Start Workout Button */}
       <Animated.View
-        style={[styles.startButtonContainer, { opacity: buttonAnim, transform: [{ translateY: buttonTranslateY }] }]}
+        style={[styles.startButtonContainer, { opacity: buttonAnim, transform: [{ translateY: buttonTranslateY }], paddingBottom: insets.bottom + 16 }]}
       >
         <Button
           title="Comenzar Entrenamiento"
@@ -219,7 +220,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
   header: {
-    paddingTop: 60,
     paddingHorizontal: 20,
     paddingBottom: 20,
     backgroundColor: colors.surface,
@@ -227,19 +227,15 @@ const styles = StyleSheet.create({
     borderBottomRightRadius: 24,
   },
   backButton: {
-    position: 'absolute',
-    top: 16,
-    left: 16,
-    zIndex: 10,
     width: 44,
     height: 44,
     borderRadius: 22,
     backgroundColor: colors.card,
     justifyContent: 'center',
     alignItems: 'center',
+    marginBottom: 8,
   },
   headerContent: {
-    marginTop: 20,
     marginBottom: 16,
   },
   headerTitle: {
@@ -325,7 +321,6 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     padding: 20,
-    paddingBottom: 36,
     backgroundColor: colors.background,
     borderTopWidth: 1,
     borderTopColor: colors.border,

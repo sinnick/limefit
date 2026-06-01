@@ -23,18 +23,43 @@ import {
   HistorialScreen,
   PerfilScreen,
 } from './src/screens';
+// Pantallas de Fase 1 por import default DIRECTO (no vía el barrel): importarlas
+// del barrel creaba un ciclo de evaluación que las dejaba undefined en runtime
+// (React Navigation: "Couldn't find a component for screen 'RecordDetail'").
+import RecordDetailScreen from './src/screens/RecordDetailScreen';
+import MetricasScreen from './src/screens/MetricasScreen';
+import CalendarioScreen from './src/screens/CalendarioScreen';
+import EditarPerfilScreen from './src/screens/EditarPerfilScreen';
+// Pantallas de Fase 2 — mismo criterio: default import DIRECTO (no barrel).
+import BibliotecaScreen from './src/screens/BibliotecaScreen';
+import DetalleEjercicioScreen from './src/screens/DetalleEjercicioScreen';
+import ScanQRScreen from './src/screens/ScanQRScreen';
+import NotificacionesScreen from './src/screens/NotificacionesScreen';
+// Fase 4 — default import DIRECTO (no barrel).
+import MembresiaScreen from './src/screens/MembresiaScreen';
+import ClasesScreen from './src/screens/ClasesScreen';
+import MisReservasScreen from './src/screens/MisReservasScreen';
+import AnunciosScreen from './src/screens/AnunciosScreen';
+// Config de backend (engranaje del login, AuthStack).
+import BackendConfigScreen from './src/screens/BackendConfigScreen';
 
 // Providers
 import { ToastProvider } from './src/components/ui/Toast';
+import { ThemeProvider } from './src/theme/ThemeProvider';
 
 // Store
 import { useIsAuthenticated } from './src/store/userStore';
+
+// Services — offline-first (CONTRACT-fase5A §2.3 / §2.6)
+import { initSyncQueueTriggers } from './src/services/syncQueue';
+import { restaurarQueryClient, persistirQueryClient } from './src/services/queryPersister';
 
 // Types
 import { RootStackParamList } from './src/types';
 
 // Constants
 import { colors } from './src/constants/theme';
+import { activeBrand } from './brands/registry';
 
 // Prevent splash screen from auto-hiding
 SplashScreen.preventAutoHideAsync();
@@ -53,13 +78,17 @@ const queryClient = new QueryClient({
   },
 });
 
+// Hidratar la caché de RQ desde MMKV ANTES del primer render de queries
+// (CONTRACT-fase5A §2.6). MMKV es síncrono → no hace falta gate de isRestoring.
+restaurarQueryClient(queryClient);
+
 // Navigation component
 const Navigation: React.FC = () => {
   const isAuthenticated = useIsAuthenticated();
 
   return (
     <NavigationContainer>
-      <StatusBar style="light" backgroundColor="transparent" translucent />
+      <StatusBar style="light" />
       {!isAuthenticated ? (
         // Auth Stack
         <Stack.Navigator
@@ -70,6 +99,11 @@ const Navigation: React.FC = () => {
           }}
         >
           <Stack.Screen name="Login" component={LoginScreen} />
+          <Stack.Screen
+            name="BackendConfig"
+            component={BackendConfigScreen}
+            options={{ animation: 'slide_from_right' }}
+          />
         </Stack.Navigator>
       ) : (
         // Main Stack
@@ -95,6 +129,21 @@ const Navigation: React.FC = () => {
           <Stack.Screen name="Records" component={RecordsScreen} />
           <Stack.Screen name="Historial" component={HistorialScreen} />
           <Stack.Screen name="Perfil" component={PerfilScreen} />
+          {/* Fase 1 — pantallas nuevas (CONTRACT-fase1 §3.3) */}
+          <Stack.Screen name="RecordDetail" component={RecordDetailScreen} />
+          <Stack.Screen name="Metricas" component={MetricasScreen} />
+          <Stack.Screen name="Calendario" component={CalendarioScreen} />
+          <Stack.Screen name="EditarPerfil" component={EditarPerfilScreen} />
+          {/* Fase 2 — pantallas nuevas (CONTRACT-fase2 §4) */}
+          <Stack.Screen name="Biblioteca" component={BibliotecaScreen} />
+          <Stack.Screen name="DetalleEjercicio" component={DetalleEjercicioScreen} />
+          <Stack.Screen name="ScanQR" component={ScanQRScreen} />
+          <Stack.Screen name="Notificaciones" component={NotificacionesScreen} />
+          {/* Fase 4 */}
+          <Stack.Screen name="Membresia" component={MembresiaScreen} />
+          <Stack.Screen name="Clases" component={ClasesScreen} />
+          <Stack.Screen name="MisReservas" component={MisReservasScreen} />
+          <Stack.Screen name="Anuncios" component={AnunciosScreen} />
         </Stack.Navigator>
       )}
     </NavigationContainer>
@@ -108,14 +157,10 @@ export default function App() {
   useEffect(() => {
     async function prepare() {
       try {
-        // Load fonts
-        await Font.loadAsync({
-          'Work-Sans': require('./assets/fonts/Work_Sans/static/WorkSans-Regular.ttf'),
-          'Work-Sans-Bold': require('./assets/fonts/Work_Sans/static/WorkSans-Bold.ttf'),
-          'Work-Sans-SemiBold': require('./assets/fonts/Work_Sans/static/WorkSans-SemiBold.ttf'),
-          'Work-Sans-Medium': require('./assets/fonts/Work_Sans/static/WorkSans-Medium.ttf'),
-          'Work-Sans-Light': require('./assets/fonts/Work_Sans/static/WorkSans-Light.ttf'),
-        });
+        // Load the active brand's fonts (ver brands/registry.ts).
+        if (activeBrand.fontAssets) {
+          await Font.loadAsync(activeBrand.fontAssets);
+        }
       } catch (e) {
         console.warn('Error loading fonts:', e);
       } finally {
@@ -124,6 +169,18 @@ export default function App() {
     }
 
     prepare();
+  }, []);
+
+  // Offline-first (CONTRACT-fase5A §2.3 / §2.6): activar triggers de flush
+  // (AppState→active, poll de reintento, intento al arrancar) y la persistencia
+  // de la caché de RQ en MMKV. Ambos devuelven cleanup.
+  useEffect(() => {
+    const cleanupTriggers = initSyncQueueTriggers();
+    const cleanupPersist = persistirQueryClient(queryClient);
+    return () => {
+      cleanupTriggers();
+      cleanupPersist();
+    };
   }, []);
 
   const onLayoutRootView = useCallback(async () => {
@@ -141,11 +198,13 @@ export default function App() {
     <GestureHandlerRootView style={styles.container}>
       <QueryClientProvider client={queryClient}>
         <SafeAreaProvider>
-          <ToastProvider>
-            <View style={styles.container} onLayout={onLayoutRootView}>
-              <Navigation />
-            </View>
-          </ToastProvider>
+          <ThemeProvider>
+            <ToastProvider>
+              <View style={styles.container} onLayout={onLayoutRootView}>
+                <Navigation />
+              </View>
+            </ToastProvider>
+          </ThemeProvider>
         </SafeAreaProvider>
       </QueryClientProvider>
     </GestureHandlerRootView>

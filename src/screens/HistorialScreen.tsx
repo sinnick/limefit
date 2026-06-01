@@ -7,6 +7,7 @@ import {
   Animated,
 } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors, fontFamily, shadows } from '../constants/theme';
@@ -94,6 +95,7 @@ const WorkoutCard: React.FC<WorkoutCardProps> = ({ workout, index }) => {
 
 export const HistorialScreen: React.FC<HistorialScreenProps> = ({ navigation }) => {
   const historial = useHistorialWorkouts();
+  const insets = useSafeAreaInsets();
 
   // Agrupar por mes
   const groupedByMonth = historial.reduce((acc, workout) => {
@@ -117,14 +119,8 @@ export const HistorialScreen: React.FC<HistorialScreenProps> = ({ navigation }) 
         title="Historial"
         subtitle={`${historial.length} entrenamientos`}
         showSettings={false}
+        onBack={() => navigation.goBack()}
       />
-
-      <TouchableOpacity
-        style={styles.backButton}
-        onPress={() => navigation.goBack()}
-      >
-        <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
-      </TouchableOpacity>
 
       {historial.length === 0 ? (
         <EmptyState
@@ -138,8 +134,7 @@ export const HistorialScreen: React.FC<HistorialScreenProps> = ({ navigation }) 
           renderItem={({ item, index }) => (
             <WorkoutCard workout={item} index={index} />
           )}
-          estimatedItemSize={180}
-          contentContainerStyle={styles.listContent}
+          contentContainerStyle={[styles.listContent, { paddingBottom: insets.bottom + 16 }]}
           showsVerticalScrollIndicator={false}
         />
       )}
@@ -152,21 +147,8 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
-  backButton: {
-    position: 'absolute',
-    top: 16,
-    left: 16,
-    zIndex: 10,
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: colors.surface,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
   listContent: {
     paddingHorizontal: 20,
-    paddingBottom: 20,
   },
   workoutCard: {
     marginBottom: 16,

@@ -10,6 +10,7 @@ import {
   Animated,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors, fontFamily, shadows } from '../constants/theme';
@@ -18,8 +19,10 @@ import { useUser, useUserStore } from '../store/userStore';
 import { useRutinasQuery, useRecordsQuery } from '../services/queries';
 import { useRutinas } from '../store/rutinasStore';
 import { useHistorialWorkouts } from '../store/workoutStore';
+import { useRecords } from '../store/recordsStore';
+import { calcularRacha, calcularLogros } from '../utils/achievements';
 import { Card, ProgressBar, Loading } from '../components/ui';
-import { UserHeader } from '../components';
+import { UserHeader, SyncStatusBadge } from '../components';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -88,9 +91,23 @@ const MenuCard: React.FC<MenuCardProps> = ({
 
 export const InicioScreen: React.FC<InicioScreenProps> = ({ navigation }) => {
   const user = useUser();
+  const insets = useSafeAreaInsets();
   const logout = useUserStore((state) => state.logout);
   const rutinas = useRutinas();
   const historial = useHistorialWorkouts();
+  const records = useRecords();
+
+  // Rachas y logros (1.4) — cálculo local sobre historial + records.
+  const racha = React.useMemo(() => calcularRacha(historial), [historial]);
+  const logros = React.useMemo(
+    () => calcularLogros(historial, records),
+    [historial, records]
+  );
+  const logrosDesbloqueados = logros.filter((l) => l.desbloqueado);
+  // Próximo logro por desbloquear (mayor progreso entre los bloqueados).
+  const proximoLogro = logros
+    .filter((l) => !l.desbloqueado)
+    .sort((a, b) => b.progreso - a.progreso)[0];
 
   const statsAnim = useRef(new Animated.Value(0)).current;
   const statsTranslateY = useRef(new Animated.Value(20)).current;
@@ -179,7 +196,7 @@ export const InicioScreen: React.FC<InicioScreenProps> = ({ navigation }) => {
     <View style={styles.container}>
       <ScrollView
         style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 16 }]}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
@@ -195,6 +212,11 @@ export const InicioScreen: React.FC<InicioScreenProps> = ({ navigation }) => {
             // TODO: Navigate to settings
           }}
         />
+
+        {/* Indicador de estado de sync (5.2) — fila bajo el header */}
+        <View style={styles.syncRow}>
+          <SyncStatusBadge />
+        </View>
 
         {/* Quick Stats */}
         <Animated.View style={[styles.statsContainer, { opacity: statsAnim, transform: [{ translateY: statsTranslateY }] }]}>
@@ -243,10 +265,66 @@ export const InicioScreen: React.FC<InicioScreenProps> = ({ navigation }) => {
             <MenuCard
               title="Historial"
               subtitle={`${historial.length} entrenamientos`}
-              icon="calendar-outline"
+              icon="time-outline"
               color={colors.info}
               onPress={() => navigation.navigate('Historial')}
               delay={400}
+            />
+            <MenuCard
+              title="Métricas"
+              subtitle="Peso y medidas"
+              icon="body-outline"
+              color={colors.success}
+              onPress={() => navigation.navigate('Metricas')}
+              delay={500}
+            />
+            <MenuCard
+              title="Calendario"
+              subtitle="Tus entrenamientos"
+              icon="calendar-outline"
+              color={colors.warning}
+              onPress={() => navigation.navigate('Calendario')}
+              delay={600}
+            />
+            <MenuCard
+              title="Ejercicios"
+              subtitle="Biblioteca"
+              icon="library-outline"
+              color={colors.info}
+              onPress={() => navigation.navigate('Biblioteca')}
+              delay={700}
+            />
+            <MenuCard
+              title="Check-in"
+              subtitle="Asistencia QR"
+              icon="qr-code-outline"
+              color={colors.success}
+              onPress={() => navigation.navigate('ScanQR')}
+              delay={800}
+            />
+            <MenuCard
+              title="Clases"
+              subtitle="Reservá tu cupo"
+              icon="calendar-number-outline"
+              color={colors.lime}
+              onPress={() => navigation.navigate('Clases')}
+              delay={850}
+            />
+            <MenuCard
+              title="Mis Reservas"
+              subtitle="Tus clases reservadas"
+              icon="bookmark-outline"
+              color={colors.info}
+              onPress={() => navigation.navigate('MisReservas')}
+              delay={900}
+            />
+            <MenuCard
+              title="Anuncios"
+              subtitle="Novedades del gym"
+              icon="megaphone-outline"
+              color={colors.warning}
+              onPress={() => navigation.navigate('Anuncios')}
+              delay={950}
             />
             <MenuCard
               title="Mi Perfil"
@@ -254,9 +332,60 @@ export const InicioScreen: React.FC<InicioScreenProps> = ({ navigation }) => {
               icon="person-outline"
               color={colors.textSecondary}
               onPress={() => navigation.navigate('Perfil')}
-              delay={500}
+              delay={1000}
             />
           </View>
+        </View>
+
+        {/* Racha + Logros (1.4) */}
+        <View style={styles.rachaContainer}>
+          <Text style={styles.sectionTitle}>Tu progreso</Text>
+          <Card variant="default" padding="lg">
+            <View style={styles.rachaRow}>
+              <View style={styles.rachaItem}>
+                <Ionicons name="flame" size={28} color={colors.warning} />
+                <Text style={styles.rachaValue}>{racha.actual}</Text>
+                <Text style={styles.rachaLabel}>Racha actual</Text>
+              </View>
+              <View style={styles.statDivider} />
+              <View style={styles.rachaItem}>
+                <Ionicons name="trophy" size={28} color="#FFD700" />
+                <Text style={styles.rachaValue}>{racha.mejor}</Text>
+                <Text style={styles.rachaLabel}>Mejor racha</Text>
+              </View>
+              <View style={styles.statDivider} />
+              <View style={styles.rachaItem}>
+                <Ionicons name="ribbon" size={28} color={colors.lime} />
+                <Text style={styles.rachaValue}>{logrosDesbloqueados.length}</Text>
+                <Text style={styles.rachaLabel}>Logros</Text>
+              </View>
+            </View>
+
+            {/* Badges de logros desbloqueados */}
+            {logrosDesbloqueados.length > 0 && (
+              <View style={styles.badgesRow}>
+                {logrosDesbloqueados.slice(0, 6).map((l) => (
+                  <View key={l.id} style={styles.badge}>
+                    <Ionicons name="medal" size={16} color={colors.lime} />
+                    <Text style={styles.badgeText} numberOfLines={1}>
+                      {l.titulo}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            )}
+
+            {/* Próximo logro a desbloquear */}
+            {proximoLogro && (
+              <View style={styles.proximoLogro}>
+                <Text style={styles.proximoLogroTitle}>
+                  Próximo: {proximoLogro.titulo}
+                </Text>
+                <Text style={styles.proximoLogroDesc}>{proximoLogro.descripcion}</Text>
+                <ProgressBar progress={proximoLogro.progreso * 100} />
+              </View>
+            )}
+          </Card>
         </View>
 
         {/* Last Workout */}
@@ -321,8 +450,10 @@ const styles = StyleSheet.create({
   scrollView: {
     flex: 1,
   },
-  scrollContent: {
-    paddingBottom: 32,
+  scrollContent: {},
+  syncRow: {
+    paddingHorizontal: 20,
+    marginBottom: 16,
   },
   statsContainer: {
     marginHorizontal: 20,
@@ -364,6 +495,66 @@ const styles = StyleSheet.create({
   menuContainer: {
     paddingHorizontal: 20,
     marginBottom: 24,
+  },
+  rachaContainer: {
+    paddingHorizontal: 20,
+    marginBottom: 24,
+  },
+  rachaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  rachaItem: {
+    flex: 1,
+    alignItems: 'center',
+    gap: 4,
+  },
+  rachaValue: {
+    fontFamily: fontFamily.bold,
+    fontSize: 24,
+    color: colors.textPrimary,
+  },
+  rachaLabel: {
+    fontFamily: fontFamily.regular,
+    fontSize: 11,
+    color: colors.textSecondary,
+    textAlign: 'center',
+  },
+  badgesRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 16,
+  },
+  badge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: `${colors.lime}15`,
+    borderRadius: 12,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+  },
+  badgeText: {
+    fontFamily: fontFamily.medium,
+    fontSize: 12,
+    color: colors.lime,
+    maxWidth: 120,
+  },
+  proximoLogro: {
+    marginTop: 16,
+    gap: 6,
+  },
+  proximoLogroTitle: {
+    fontFamily: fontFamily.semibold,
+    fontSize: 14,
+    color: colors.textPrimary,
+  },
+  proximoLogroDesc: {
+    fontFamily: fontFamily.regular,
+    fontSize: 12,
+    color: colors.textSecondary,
+    marginBottom: 4,
   },
   sectionTitle: {
     fontFamily: fontFamily.bold,

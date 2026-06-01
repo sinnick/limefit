@@ -8,10 +8,18 @@ import {
   Dimensions,
   StyleSheet,
   Animated,
+  TouchableOpacity,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { StatusBar } from 'expo-status-bar';
-import { colors, fontFamily } from '../constants/theme';
+import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { colors, fontFamily, spacing } from '../constants/theme';
+import { APP_CONFIG } from '../constants/config';
+import { RootStackParamList } from '../types';
+import { activeBrand } from '../../brands/registry';
 import { Button, Input } from '../components/ui';
 import { useLogin } from '../services/queries';
 import { useUserStore } from '../store/userStore';
@@ -24,6 +32,8 @@ export const LoginScreen: React.FC = () => {
   const [error, setError] = useState('');
   const { mutate: login, isPending } = useLogin();
   const isAuthenticated = useUserStore((state) => state.isAuthenticated);
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const insets = useSafeAreaInsets();
 
   // Animations
   const logoScale = useRef(new Animated.Value(0)).current;
@@ -83,17 +93,34 @@ export const LoginScreen: React.FC = () => {
         end={{ x: 1, y: 1 }}
       />
 
+      {/* Engranaje → configuración del backend */}
+      <TouchableOpacity
+        style={[styles.settingsButton, { top: insets.top + 8 }]}
+        onPress={() => navigation.navigate('BackendConfig')}
+        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        accessibilityLabel="Configurar backend"
+      >
+        <Ionicons name="settings-outline" size={22} color={colors.textSecondary} />
+      </TouchableOpacity>
+
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.content}
       >
         {/* Logo Section */}
         <Animated.View style={[styles.logoContainer, { transform: [{ scale: logoScale }] }]}>
-          <View style={styles.logoWrapper}>
-            <Text style={styles.logoIcon}>🍋</Text>
-          </View>
-          <Text style={styles.logoText}>LIMEFIT</Text>
-          <Text style={styles.tagline}>Tu progreso, tu fuerza</Text>
+          {activeBrand.logoImage ? (
+            // Marca con wordmark propio: el logo reemplaza al badge + nombre de texto.
+            <Image source={activeBrand.logoImage} style={styles.logoBanner} resizeMode="contain" />
+          ) : (
+            <>
+              <View style={styles.logoWrapper}>
+                <Text style={styles.logoIcon}>{activeBrand.logoEmoji}</Text>
+              </View>
+              <Text style={styles.logoText}>{APP_CONFIG.name.toUpperCase()}</Text>
+            </>
+          )}
+          <Text style={styles.tagline}>{activeBrand.tagline}</Text>
         </Animated.View>
 
         {/* Form Section */}
@@ -136,8 +163,8 @@ export const LoginScreen: React.FC = () => {
         </Animated.View>
 
         {/* Footer */}
-        <View style={styles.footer}>
-          <Text style={styles.versionText}>LimeFit v2.0</Text>
+        <View style={[styles.footer, { bottom: insets.bottom + 12 }]}>
+          <Text style={styles.versionText}>{APP_CONFIG.name} v{APP_CONFIG.version}</Text>
         </View>
       </KeyboardAvoidingView>
     </View>
@@ -148,6 +175,17 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
+  },
+  settingsButton: {
+    position: 'absolute',
+    right: spacing.lg,
+    zIndex: 10,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.surface,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   content: {
     flex: 1,
@@ -171,6 +209,11 @@ const styles = StyleSheet.create({
   },
   logoIcon: {
     fontSize: 48,
+  },
+  logoBanner: {
+    width: 260,
+    height: 114,
+    marginBottom: 8,
   },
   logoText: {
     fontFamily: fontFamily.bold,
@@ -221,7 +264,6 @@ const styles = StyleSheet.create({
   },
   footer: {
     position: 'absolute',
-    bottom: 32,
     left: 0,
     right: 0,
     alignItems: 'center',

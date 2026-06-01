@@ -1,6 +1,10 @@
 node_modules/
 .expo/
 dist/
+
+# Native projects — white-label CNG: se generan por marca con `expo prebuild`.
+/ios/
+/android/
 npm-debug.*
 *.jks
 *.p8
