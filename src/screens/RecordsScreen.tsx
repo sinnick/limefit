@@ -158,14 +158,8 @@ export const RecordsScreen: React.FC<RecordsScreenProps> = ({ navigation }) => {
         title="Mis Records"
         subtitle={`${totalPRs} PRs personales`}
         showSettings={false}
+        onBack={() => navigation.goBack()}
       />
-
-      <TouchableOpacity
-        style={styles.backButton}
-        onPress={() => navigation.goBack()}
-      >
-        <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
-      </TouchableOpacity>
 
       {/* Stats Summary */}
       <Animated.View style={[styles.statsContainer, { opacity: statsAnim }]}>
@@ -249,18 +243,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
-  },
-  backButton: {
-    position: 'absolute',
-    top: 16,
-    left: 16,
-    zIndex: 10,
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: colors.surface,
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   statsContainer: {
     paddingHorizontal: 20,

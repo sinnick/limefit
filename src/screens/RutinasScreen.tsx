@@ -132,14 +132,8 @@ export const RutinasScreen: React.FC<RutinasScreenProps> = ({ navigation }) => {
         title="Mis Rutinas"
         subtitle={`${rutinas.length} rutinas asignadas`}
         showSettings={false}
+        onBack={() => navigation.goBack()}
       />
-
-      <TouchableOpacity
-        style={styles.backButton}
-        onPress={() => navigation.goBack()}
-      >
-        <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
-      </TouchableOpacity>
 
       {isError && rutinas.length === 0 ? (
         <EmptyState
@@ -185,18 +179,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
-  },
-  backButton: {
-    position: 'absolute',
-    top: 16,
-    left: 16,
-    zIndex: 10,
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: colors.surface,
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   listContent: {
     paddingHorizontal: 20,
