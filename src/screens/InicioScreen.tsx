@@ -1,441 +1,155 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useMemo } from 'react';
 import {
   View,
   Text,
   ScrollView,
   TouchableOpacity,
   StyleSheet,
-  Dimensions,
   RefreshControl,
-  Animated,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { colors, fontFamily, shadows } from '../constants/theme';
+import { useTheme } from '../hooks/useTheme';
+import { fontFamily, shadows } from '../constants/theme';
 import { RootStackParamList } from '../types';
 import { useUser, useUserStore } from '../store/userStore';
-import { useRutinasQuery, useRecordsQuery } from '../services/queries';
+import { useRutinasQuery } from '../services/queries';
 import { useRutinas } from '../store/rutinasStore';
-import { useHistorialWorkouts } from '../store/workoutStore';
-import { useRecords } from '../store/recordsStore';
-import { calcularRacha, calcularLogros } from '../utils/achievements';
-import { Card, ProgressBar, Loading } from '../components/ui';
-import { UserHeader, SyncStatusBadge } from '../components';
+import { useAsistenciaStore, useAsistenciaHistorial } from '../store/asistenciaStore';
+import { Loading, Card, HabitHeatmap, UserHeader, SyncStatusBadge } from '../components';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+// ============================================================================
+// InicioScreen (versión simple). Solo lo esencial que pidió el usuario:
+//   1. Botón "Fui al gym hoy" → marca asistencia (asistenciaStore, offline-first).
+//   2. Heatmap de asistencia estilo commit graph de GitHub.
+//   3. Acceso a "Mis Rutinas".
+// El resto de pantallas siguen registradas en el stack (App.tsx) pero sin
+// accesos desde acá — se pueden reactivar cuando haga falta.
+// ============================================================================
 
 interface InicioScreenProps {
   navigation: NativeStackNavigationProp<RootStackParamList, 'Inicio'>;
 }
 
-interface MenuCardProps {
-  title: string;
-  subtitle: string;
-  icon: keyof typeof Ionicons.glyphMap;
-  color: string;
-  onPress: () => void;
-  delay?: number;
-}
-
-const MenuCard: React.FC<MenuCardProps> = ({
-  title,
-  subtitle,
-  icon,
-  color,
-  onPress,
-  delay = 0,
-}) => {
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const translateY = useRef(new Animated.Value(20)).current;
-
-  useEffect(() => {
-    Animated.parallel([
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 400,
-        delay,
-        useNativeDriver: true,
-      }),
-      Animated.spring(translateY, {
-        toValue: 0,
-        delay,
-        useNativeDriver: true,
-      }),
-    ]).start();
-  }, [delay, fadeAnim, translateY]);
-
-  return (
-    <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY }] }}>
-      <TouchableOpacity onPress={onPress} activeOpacity={0.8}>
-        <LinearGradient
-          colors={[colors.card, colors.surface]}
-          style={styles.menuCard}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-        >
-          <View style={[styles.menuIconContainer, { backgroundColor: `${color}20` }]}>
-            <Ionicons name={icon} size={28} color={color} />
-          </View>
-          <Text style={styles.menuTitle}>{title}</Text>
-          <Text style={styles.menuSubtitle}>{subtitle}</Text>
-          <View style={styles.menuArrow}>
-            <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
-          </View>
-        </LinearGradient>
-      </TouchableOpacity>
-    </Animated.View>
-  );
-};
-
 export const InicioScreen: React.FC<InicioScreenProps> = ({ navigation }) => {
+  const { colors } = useTheme();
   const user = useUser();
   const insets = useSafeAreaInsets();
   const logout = useUserStore((state) => state.logout);
   const rutinas = useRutinas();
-  const historial = useHistorialWorkouts();
-  const records = useRecords();
 
-  // Rachas y logros (1.4) — cálculo local sobre historial + records.
-  const racha = React.useMemo(() => calcularRacha(historial), [historial]);
-  const logros = React.useMemo(
-    () => calcularLogros(historial, records),
-    [historial, records]
-  );
-  const logrosDesbloqueados = logros.filter((l) => l.desbloqueado);
-  // Próximo logro por desbloquear (mayor progreso entre los bloqueados).
-  const proximoLogro = logros
-    .filter((l) => !l.desbloqueado)
-    .sort((a, b) => b.progreso - a.progreso)[0];
+  const historial = useAsistenciaHistorial();
+  const marcarAsistencia = useAsistenciaStore((s) => s.marcarAsistencia);
 
-  const statsAnim = useRef(new Animated.Value(0)).current;
-  const statsTranslateY = useRef(new Animated.Value(20)).current;
-  const lastWorkoutAnim = useRef(new Animated.Value(0)).current;
-  const lastWorkoutTranslateY = useRef(new Animated.Value(20)).current;
+  const { isLoading, refetch, isRefetching } = useRutinasQuery();
 
-  const {
-    isLoading: loadingRutinas,
-    refetch: refetchRutinas,
-    isRefetching,
-  } = useRutinasQuery();
-
-  const { isLoading: loadingRecords, refetch: refetchRecords } = useRecordsQuery(
-    user?.DNI || ''
-  );
-
-  const isLoading = loadingRutinas || loadingRecords;
-
-  useEffect(() => {
-    if (!isLoading) {
-      Animated.parallel([
-        Animated.timing(statsAnim, {
-          toValue: 1,
-          duration: 400,
-          delay: 100,
-          useNativeDriver: true,
-        }),
-        Animated.spring(statsTranslateY, {
-          toValue: 0,
-          delay: 100,
-          useNativeDriver: true,
-        }),
-      ]).start();
-
-      Animated.parallel([
-        Animated.timing(lastWorkoutAnim, {
-          toValue: 1,
-          duration: 400,
-          delay: 600,
-          useNativeDriver: true,
-        }),
-        Animated.spring(lastWorkoutTranslateY, {
-          toValue: 0,
-          delay: 600,
-          useNativeDriver: true,
-        }),
-      ]).start();
-    }
-  }, [isLoading, statsAnim, statsTranslateY, lastWorkoutAnim, lastWorkoutTranslateY]);
-
-  // Estadísticas
-  const entrenamientosEstaSemana = historial.filter((w) => {
-    const fecha = new Date(w.fecha);
+  // ¿Ya registró hoy? Derivado del historial para que sea reactivo al marcar.
+  const yaHoy = useMemo(() => {
+    const dni = user?.DNI ?? '';
     const hoy = new Date();
-    const inicioSemana = new Date(hoy.setDate(hoy.getDate() - hoy.getDay()));
-    return fecha >= inicioSemana;
-  }).length;
+    const claveHoy = `${hoy.getFullYear()}-${hoy.getMonth()}-${hoy.getDate()}`;
+    return historial.some((a) => {
+      const d = new Date(a.fecha);
+      return a.dni === dni && `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}` === claveHoy;
+    });
+  }, [historial, user?.DNI]);
 
-  const volumenSemana = historial
-    .filter((w) => {
-      const fecha = new Date(w.fecha);
-      const hoy = new Date();
-      const inicioSemana = new Date(hoy.setDate(hoy.getDate() - hoy.getDay()));
-      return fecha >= inicioSemana;
-    })
-    .reduce((acc, w) => acc + w.volumenTotal, 0);
+  const fechasAsistencia = useMemo(() => historial.map((a) => a.fecha), [historial]);
 
-  const prsEsteMes = historial
-    .filter((w) => {
-      const fecha = new Date(w.fecha);
-      const hoy = new Date();
-      return fecha.getMonth() === hoy.getMonth() && fecha.getFullYear() === hoy.getFullYear();
-    })
-    .reduce((acc, w) => acc + w.prsLogrados, 0);
-
-  const handleRefresh = () => {
-    refetchRutinas();
-    refetchRecords();
+  const handleMarcar = () => {
+    if (yaHoy) return;
+    marcarAsistencia({ metodo: 'manual' });
   };
 
   if (isLoading) {
-    return <Loading fullScreen message="Cargando tu gimnasio..." />;
+    return <Loading fullScreen message="Cargando..." />;
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <ScrollView
         style={styles.scrollView}
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 16 }]}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 24 }]}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
             refreshing={isRefetching}
-            onRefresh={handleRefresh}
-            tintColor={colors.lime}
-            colors={[colors.lime]}
+            onRefresh={refetch}
+            tintColor={colors.accent}
+            colors={[colors.accent]}
           />
         }
       >
-        <UserHeader
-          onSettingsPress={() => {
-            // TODO: Navigate to settings
-          }}
-        />
+        <UserHeader />
 
-        {/* Indicador de estado de sync (5.2) — fila bajo el header */}
         <View style={styles.syncRow}>
           <SyncStatusBadge />
         </View>
 
-        {/* Quick Stats */}
-        <Animated.View style={[styles.statsContainer, { opacity: statsAnim, transform: [{ translateY: statsTranslateY }] }]}>
-          <View style={styles.statsRow}>
-            <View style={styles.statItem}>
-              <Text style={styles.statValue}>{entrenamientosEstaSemana}</Text>
-              <Text style={styles.statLabel}>Entrenamientos</Text>
-              <Text style={styles.statPeriod}>esta semana</Text>
-            </View>
-            <View style={styles.statDivider} />
-            <View style={styles.statItem}>
-              <Text style={styles.statValue}>{(volumenSemana / 1000).toFixed(1)}k</Text>
-              <Text style={styles.statLabel}>Kg Levantados</Text>
-              <Text style={styles.statPeriod}>esta semana</Text>
-            </View>
-            <View style={styles.statDivider} />
-            <View style={styles.statItem}>
-              <Text style={[styles.statValue, { color: colors.lime }]}>{prsEsteMes}</Text>
-              <Text style={styles.statLabel}>PRs</Text>
-              <Text style={styles.statPeriod}>este mes</Text>
-            </View>
-          </View>
-        </Animated.View>
-
-        {/* Menu Cards */}
-        <View style={styles.menuContainer}>
-          <Text style={styles.sectionTitle}>¿Qué vamos a hacer hoy?</Text>
-
-          <View style={styles.menuGrid}>
-            <MenuCard
-              title="Mis Rutinas"
-              subtitle={`${rutinas.length} rutinas`}
-              icon="barbell-outline"
-              color={colors.lime}
-              onPress={() => navigation.navigate('Rutinas')}
-              delay={200}
+        {/* Botón "Fui al gym hoy" */}
+        <View style={styles.section}>
+          <TouchableOpacity
+            activeOpacity={yaHoy ? 1 : 0.85}
+            onPress={handleMarcar}
+            style={[
+              styles.checkinButton,
+              {
+                backgroundColor: yaHoy ? colors.surfaceLight : colors.accent,
+                borderColor: yaHoy ? colors.accent : 'transparent',
+                borderWidth: yaHoy ? 1.5 : 0,
+              },
+            ]}
+          >
+            <Ionicons
+              name={yaHoy ? 'checkmark-circle' : 'barbell'}
+              size={26}
+              color={yaHoy ? colors.accent : colors.black}
             />
-            <MenuCard
-              title="Records"
-              subtitle="Tus mejores marcas"
-              icon="trophy-outline"
-              color="#FFD700"
-              onPress={() => navigation.navigate('Records')}
-              delay={300}
-            />
-            <MenuCard
-              title="Historial"
-              subtitle={`${historial.length} entrenamientos`}
-              icon="time-outline"
-              color={colors.info}
-              onPress={() => navigation.navigate('Historial')}
-              delay={400}
-            />
-            <MenuCard
-              title="Métricas"
-              subtitle="Peso y medidas"
-              icon="body-outline"
-              color={colors.success}
-              onPress={() => navigation.navigate('Metricas')}
-              delay={500}
-            />
-            <MenuCard
-              title="Calendario"
-              subtitle="Tus entrenamientos"
-              icon="calendar-outline"
-              color={colors.warning}
-              onPress={() => navigation.navigate('Calendario')}
-              delay={600}
-            />
-            <MenuCard
-              title="Ejercicios"
-              subtitle="Biblioteca"
-              icon="library-outline"
-              color={colors.info}
-              onPress={() => navigation.navigate('Biblioteca')}
-              delay={700}
-            />
-            <MenuCard
-              title="Check-in"
-              subtitle="Asistencia QR"
-              icon="qr-code-outline"
-              color={colors.success}
-              onPress={() => navigation.navigate('ScanQR')}
-              delay={800}
-            />
-            <MenuCard
-              title="Clases"
-              subtitle="Reservá tu cupo"
-              icon="calendar-number-outline"
-              color={colors.lime}
-              onPress={() => navigation.navigate('Clases')}
-              delay={850}
-            />
-            <MenuCard
-              title="Mis Reservas"
-              subtitle="Tus clases reservadas"
-              icon="bookmark-outline"
-              color={colors.info}
-              onPress={() => navigation.navigate('MisReservas')}
-              delay={900}
-            />
-            <MenuCard
-              title="Anuncios"
-              subtitle="Novedades del gym"
-              icon="megaphone-outline"
-              color={colors.warning}
-              onPress={() => navigation.navigate('Anuncios')}
-              delay={950}
-            />
-            <MenuCard
-              title="Mi Perfil"
-              subtitle="Configuración"
-              icon="person-outline"
-              color={colors.textSecondary}
-              onPress={() => navigation.navigate('Perfil')}
-              delay={1000}
-            />
-          </View>
+            <Text
+              style={[
+                styles.checkinText,
+                { color: yaHoy ? colors.accent : colors.black },
+              ]}
+            >
+              {yaHoy ? '¡Registrado hoy!' : 'Fui al gym hoy'}
+            </Text>
+          </TouchableOpacity>
         </View>
 
-        {/* Racha + Logros (1.4) */}
-        <View style={styles.rachaContainer}>
-          <Text style={styles.sectionTitle}>Tu progreso</Text>
+        {/* Heatmap de asistencia */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Tu constancia</Text>
           <Card variant="default" padding="lg">
-            <View style={styles.rachaRow}>
-              <View style={styles.rachaItem}>
-                <Ionicons name="flame" size={28} color={colors.warning} />
-                <Text style={styles.rachaValue}>{racha.actual}</Text>
-                <Text style={styles.rachaLabel}>Racha actual</Text>
-              </View>
-              <View style={styles.statDivider} />
-              <View style={styles.rachaItem}>
-                <Ionicons name="trophy" size={28} color="#FFD700" />
-                <Text style={styles.rachaValue}>{racha.mejor}</Text>
-                <Text style={styles.rachaLabel}>Mejor racha</Text>
-              </View>
-              <View style={styles.statDivider} />
-              <View style={styles.rachaItem}>
-                <Ionicons name="ribbon" size={28} color={colors.lime} />
-                <Text style={styles.rachaValue}>{logrosDesbloqueados.length}</Text>
-                <Text style={styles.rachaLabel}>Logros</Text>
-              </View>
-            </View>
-
-            {/* Badges de logros desbloqueados */}
-            {logrosDesbloqueados.length > 0 && (
-              <View style={styles.badgesRow}>
-                {logrosDesbloqueados.slice(0, 6).map((l) => (
-                  <View key={l.id} style={styles.badge}>
-                    <Ionicons name="medal" size={16} color={colors.lime} />
-                    <Text style={styles.badgeText} numberOfLines={1}>
-                      {l.titulo}
-                    </Text>
-                  </View>
-                ))}
-              </View>
-            )}
-
-            {/* Próximo logro a desbloquear */}
-            {proximoLogro && (
-              <View style={styles.proximoLogro}>
-                <Text style={styles.proximoLogroTitle}>
-                  Próximo: {proximoLogro.titulo}
-                </Text>
-                <Text style={styles.proximoLogroDesc}>{proximoLogro.descripcion}</Text>
-                <ProgressBar progress={proximoLogro.progreso * 100} />
-              </View>
-            )}
+            <HabitHeatmap fechas={fechasAsistencia} />
           </Card>
         </View>
 
-        {/* Last Workout */}
-        {historial.length > 0 && (
-          <Animated.View style={[styles.lastWorkoutContainer, { opacity: lastWorkoutAnim, transform: [{ translateY: lastWorkoutTranslateY }] }]}>
-            <Text style={styles.sectionTitle}>Último entrenamiento</Text>
-            <Card variant="gradient" padding="lg">
-              <View style={styles.lastWorkoutHeader}>
-                <View>
-                  <Text style={styles.lastWorkoutName}>{historial[0].rutinaNombre}</Text>
-                  <Text style={styles.lastWorkoutDay}>{historial[0].diaNombre}</Text>
+        {/* Acceso a rutinas */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Entrenamiento</Text>
+          <TouchableOpacity activeOpacity={0.85} onPress={() => navigation.navigate('Rutinas')}>
+            <Card variant="default" padding="lg">
+              <View style={styles.rutinaRow}>
+                <View style={[styles.rutinaIcon, { backgroundColor: `${colors.accent}20` }]}>
+                  <Ionicons name="barbell-outline" size={26} color={colors.accent} />
                 </View>
-                <View style={styles.lastWorkoutDate}>
-                  <Ionicons name="calendar-outline" size={16} color={colors.textSecondary} />
-                  <Text style={styles.lastWorkoutDateText}>
-                    {new Date(historial[0].fecha).toLocaleDateString('es-ES', {
-                      day: 'numeric',
-                      month: 'short',
-                    })}
+                <View style={styles.rutinaTextWrap}>
+                  <Text style={[styles.rutinaTitle, { color: colors.textPrimary }]}>Mis Rutinas</Text>
+                  <Text style={[styles.rutinaSubtitle, { color: colors.textSecondary }]}>
+                    {rutinas.length} {rutinas.length === 1 ? 'rutina asignada' : 'rutinas asignadas'}
                   </Text>
                 </View>
-              </View>
-              <View style={styles.lastWorkoutStats}>
-                <View style={styles.lastWorkoutStat}>
-                  <Ionicons name="time-outline" size={20} color={colors.lime} />
-                  <Text style={styles.lastWorkoutStatValue}>{historial[0].duracion} min</Text>
-                </View>
-                <View style={styles.lastWorkoutStat}>
-                  <Ionicons name="barbell-outline" size={20} color={colors.lime} />
-                  <Text style={styles.lastWorkoutStatValue}>
-                    {(historial[0].volumenTotal / 1000).toFixed(1)}k kg
-                  </Text>
-                </View>
-                {historial[0].prsLogrados > 0 && (
-                  <View style={styles.lastWorkoutStat}>
-                    <Ionicons name="trophy" size={20} color="#FFD700" />
-                    <Text style={[styles.lastWorkoutStatValue, { color: '#FFD700' }]}>
-                      {historial[0].prsLogrados} PRs
-                    </Text>
-                  </View>
-                )}
+                <Ionicons name="chevron-forward" size={22} color={colors.textMuted} />
               </View>
             </Card>
-          </Animated.View>
-        )}
+          </TouchableOpacity>
+        </View>
 
-        {/* Logout Button */}
+        {/* Cerrar sesión */}
         <TouchableOpacity onPress={logout} style={styles.logoutButton}>
           <Ionicons name="log-out-outline" size={20} color={colors.error} />
-          <Text style={styles.logoutText}>Cerrar Sesión</Text>
+          <Text style={[styles.logoutText, { color: colors.error }]}>Cerrar Sesión</Text>
         </TouchableOpacity>
       </ScrollView>
     </View>
@@ -445,7 +159,6 @@ export const InicioScreen: React.FC<InicioScreenProps> = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
   },
   scrollView: {
     flex: 1,
@@ -455,193 +168,51 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     marginBottom: 16,
   },
-  statsContainer: {
-    marginHorizontal: 20,
-    backgroundColor: colors.card,
-    borderRadius: 20,
-    padding: 20,
-    marginBottom: 24,
-    ...shadows.md,
-  },
-  statsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  statItem: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  statDivider: {
-    width: 1,
-    height: 50,
-    backgroundColor: colors.border,
-  },
-  statValue: {
-    fontFamily: fontFamily.bold,
-    fontSize: 28,
-    color: colors.textPrimary,
-  },
-  statLabel: {
-    fontFamily: fontFamily.medium,
-    fontSize: 12,
-    color: colors.textSecondary,
-    marginTop: 4,
-  },
-  statPeriod: {
-    fontFamily: fontFamily.light,
-    fontSize: 10,
-    color: colors.textMuted,
-  },
-  menuContainer: {
+  section: {
     paddingHorizontal: 20,
     marginBottom: 24,
-  },
-  rachaContainer: {
-    paddingHorizontal: 20,
-    marginBottom: 24,
-  },
-  rachaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  rachaItem: {
-    flex: 1,
-    alignItems: 'center',
-    gap: 4,
-  },
-  rachaValue: {
-    fontFamily: fontFamily.bold,
-    fontSize: 24,
-    color: colors.textPrimary,
-  },
-  rachaLabel: {
-    fontFamily: fontFamily.regular,
-    fontSize: 11,
-    color: colors.textSecondary,
-    textAlign: 'center',
-  },
-  badgesRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginTop: 16,
-  },
-  badge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: `${colors.lime}15`,
-    borderRadius: 12,
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-  },
-  badgeText: {
-    fontFamily: fontFamily.medium,
-    fontSize: 12,
-    color: colors.lime,
-    maxWidth: 120,
-  },
-  proximoLogro: {
-    marginTop: 16,
-    gap: 6,
-  },
-  proximoLogroTitle: {
-    fontFamily: fontFamily.semibold,
-    fontSize: 14,
-    color: colors.textPrimary,
-  },
-  proximoLogroDesc: {
-    fontFamily: fontFamily.regular,
-    fontSize: 12,
-    color: colors.textSecondary,
-    marginBottom: 4,
   },
   sectionTitle: {
     fontFamily: fontFamily.bold,
     fontSize: 20,
-    color: colors.textPrimary,
     marginBottom: 16,
   },
-  menuGrid: {
+  checkinButton: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
+    alignItems: 'center',
+    justifyContent: 'center',
     gap: 12,
-  },
-  menuCard: {
-    width: (SCREEN_WIDTH - 52) / 2,
-    padding: 20,
+    paddingVertical: 20,
     borderRadius: 20,
-    borderWidth: 1,
-    borderColor: colors.border,
+    ...shadows.md,
   },
-  menuIconContainer: {
-    width: 48,
-    height: 48,
+  checkinText: {
+    fontFamily: fontFamily.bold,
+    fontSize: 18,
+  },
+  rutinaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+  },
+  rutinaIcon: {
+    width: 52,
+    height: 52,
     borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 16,
   },
-  menuTitle: {
+  rutinaTextWrap: {
+    flex: 1,
+  },
+  rutinaTitle: {
     fontFamily: fontFamily.bold,
     fontSize: 16,
-    color: colors.textPrimary,
-    marginBottom: 4,
+    marginBottom: 2,
   },
-  menuSubtitle: {
+  rutinaSubtitle: {
     fontFamily: fontFamily.regular,
-    fontSize: 12,
-    color: colors.textSecondary,
-  },
-  menuArrow: {
-    position: 'absolute',
-    top: 20,
-    right: 16,
-  },
-  lastWorkoutContainer: {
-    paddingHorizontal: 20,
-    marginBottom: 24,
-  },
-  lastWorkoutHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 16,
-  },
-  lastWorkoutName: {
-    fontFamily: fontFamily.bold,
-    fontSize: 18,
-    color: colors.textPrimary,
-  },
-  lastWorkoutDay: {
-    fontFamily: fontFamily.regular,
-    fontSize: 14,
-    color: colors.textSecondary,
-    marginTop: 2,
-  },
-  lastWorkoutDate: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  lastWorkoutDateText: {
-    fontFamily: fontFamily.medium,
-    fontSize: 14,
-    color: colors.textSecondary,
-  },
-  lastWorkoutStats: {
-    flexDirection: 'row',
-    gap: 24,
-  },
-  lastWorkoutStat: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  lastWorkoutStatValue: {
-    fontFamily: fontFamily.semibold,
-    fontSize: 14,
-    color: colors.textPrimary,
+    fontSize: 13,
   },
   logoutButton: {
     flexDirection: 'row',
@@ -654,7 +225,6 @@ const styles = StyleSheet.create({
   logoutText: {
     fontFamily: fontFamily.medium,
     fontSize: 14,
-    color: colors.error,
   },
 });
 
