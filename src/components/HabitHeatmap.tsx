@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,8 @@ import {
   Platform,
   UIManager,
   AccessibilityInfo,
+  Animated,
+  Easing,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../hooks/useTheme';
@@ -18,13 +20,12 @@ import { diaKey } from '../utils/asistenciaStats';
 // HabitHeatmap — tracker de constancia colapsable.
 //
 //  · Colapsado (default): SOLO la semana en curso, 7 cuadrados horizontales.
-//    Ocupa una fila; mantiene la home corta.
-//  · Expandido (al tocar): la grilla del mes completo. La semana en curso es
-//    una de sus filas, así que la transición se lee como "abrir" la misma vista.
+//  · Expandido (al tocar): la grilla del mes completo, con la semana en curso
+//    como una de sus filas — la transición se lee como abrir la misma vista.
 //
-// Semántica de la celda: ido = accent sólido · pasado sin ir = bloque apagado ·
-// futuro = slot con contorno · hoy = anillo accent. El borde está reservado en
-// TODAS las celdas para que marcar asistencia no cambie dimensiones.
+// Polish (design-eng): la celda de HOY hace un pop con spring cuando se marca
+// la asistencia — es la recompensa de la única acción diaria de la app. El
+// chevron ROTA en vez de intercambiar glyph (continuidad, no reemplazo).
 // ============================================================================
 
 if (
@@ -57,10 +58,14 @@ interface Celda {
 export const HabitHeatmap: React.FC<HabitHeatmapProps> = ({ fechas }) => {
   const { colors } = useTheme();
   const [expandido, setExpandido] = useState(false);
-  // Respetar "Reducir movimiento" del sistema: sin animación de layout.
   const [reduceMotion, setReduceMotion] = useState(false);
 
-  React.useEffect(() => {
+  // Pop de la celda de hoy al marcarse (ver useEffect más abajo).
+  const popHoy = useRef(new Animated.Value(1)).current;
+  // Rotación del chevron: 0 = colapsado, 1 = expandido.
+  const giro = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
     let vivo = true;
     AccessibilityInfo.isReduceMotionEnabled().then((v) => {
       if (vivo) setReduceMotion(v);
@@ -72,7 +77,7 @@ export const HabitHeatmap: React.FC<HabitHeatmapProps> = ({ fechas }) => {
     };
   }, []);
 
-  const { semanas, filaActual, nombreMes, diasDelMes } = useMemo(() => {
+  const { semanas, filaActual, nombreMes, diasDelMes, marcadoHoy } = useMemo(() => {
     const set = new Set(fechas.map(diaKey));
     const ahora = new Date();
     const hoy = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate());
@@ -80,15 +85,14 @@ export const HabitHeatmap: React.FC<HabitHeatmapProps> = ({ fechas }) => {
     const mes = hoy.getMonth();
 
     const primero = new Date(año, mes, 1);
-    // Índice de columna con lunes=0.
-    const offset = (primero.getDay() + 6) % 7;
-    const totalDias = new Date(año, mes + 1, 0).getDate();
+    const offset = (primero.getDay() + 6) % 7; // lunes = 0
+    const total = new Date(año, mes + 1, 0).getDate();
 
     const celdas: Celda[] = [];
     for (let i = 0; i < offset; i++) {
       celdas.push({ dia: null, asistio: false, futuro: false, esHoy: false });
     }
-    for (let d = 1; d <= totalDias; d++) {
+    for (let d = 1; d <= total; d++) {
       const fecha = new Date(año, mes, d);
       const futuro = fecha.getTime() > hoy.getTime();
       celdas.push({
@@ -104,29 +108,58 @@ export const HabitHeatmap: React.FC<HabitHeatmapProps> = ({ fechas }) => {
 
     const filas: Celda[][] = [];
     for (let i = 0; i < celdas.length; i += 7) filas.push(celdas.slice(i, i + 7));
-
-    const idxFilaActual = filas.findIndex((f) => f.some((c) => c.esHoy));
-
-    // Días del mes con asistencia (para el contador del encabezado).
-    const cuenta = celdas.filter((c) => c.asistio).length;
+    const idx = filas.findIndex((f) => f.some((c) => c.esHoy));
 
     return {
       semanas: filas,
-      filaActual: idxFilaActual >= 0 ? idxFilaActual : filas.length - 1,
+      filaActual: idx >= 0 ? idx : filas.length - 1,
       nombreMes: MESES[mes],
-      diasDelMes: cuenta,
+      diasDelMes: celdas.filter((c) => c.asistio).length,
+      marcadoHoy: set.has(diaKey(hoy.toISOString())),
     };
   }, [fechas]);
+
+  // El momento: cuando hoy pasa a marcado, la celda hace pop. Spring corto y
+  // sin rebote exagerado — confirmación, no fiesta.
+  const eraMarcado = useRef(marcadoHoy);
+  useEffect(() => {
+    if (marcadoHoy && !eraMarcado.current && !reduceMotion) {
+      popHoy.setValue(1);
+      Animated.sequence([
+        Animated.spring(popHoy, {
+          toValue: 1.18,
+          speed: 50,
+          bounciness: 10,
+          useNativeDriver: true,
+        }),
+        Animated.spring(popHoy, {
+          toValue: 1,
+          speed: 20,
+          bounciness: 6,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }
+    eraMarcado.current = marcadoHoy;
+  }, [marcadoHoy, reduceMotion, popHoy]);
 
   const toggle = () => {
     if (!reduceMotion) {
       LayoutAnimation.configureNext(
         LayoutAnimation.create(
-          200,
+          220,
           LayoutAnimation.Types.easeInEaseOut,
           LayoutAnimation.Properties.opacity
         )
       );
+      Animated.timing(giro, {
+        toValue: expandido ? 0 : 1,
+        duration: 200,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }).start();
+    } else {
+      giro.setValue(expandido ? 0 : 1);
     }
     setExpandido((v) => !v);
   };
@@ -148,11 +181,15 @@ export const HabitHeatmap: React.FC<HabitHeatmapProps> = ({ fechas }) => {
   const renderFila = (fila: Celda[], key: number) => (
     <View key={key} style={styles.fila}>
       {fila.map((c, i) => (
-        <View
+        <Animated.View
           key={i}
           style={[
             styles.celda,
-            { backgroundColor: colorFondo(c), borderColor: colorBorde(c) },
+            {
+              backgroundColor: colorFondo(c),
+              borderColor: colorBorde(c),
+              transform: c.esHoy ? [{ scale: popHoy }] : undefined,
+            },
           ]}
         >
           {c.dia !== null && (
@@ -171,10 +208,15 @@ export const HabitHeatmap: React.FC<HabitHeatmapProps> = ({ fechas }) => {
               {c.dia}
             </Text>
           )}
-        </View>
+        </Animated.View>
       ))}
     </View>
   );
+
+  const rotacion = giro.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '180deg'],
+  });
 
   return (
     <Pressable
@@ -190,7 +232,6 @@ export const HabitHeatmap: React.FC<HabitHeatmapProps> = ({ fechas }) => {
         },
       ]}
     >
-      {/* Encabezado: mes + contador + affordance */}
       <View style={styles.encabezado}>
         <Text style={[styles.mes, { color: colors.textPrimary }]}>
           {expandido ? nombreMes : 'Esta semana'}
@@ -199,15 +240,13 @@ export const HabitHeatmap: React.FC<HabitHeatmapProps> = ({ fechas }) => {
           <Text style={[styles.contador, { color: colors.textSecondary }]}>
             {diasDelMes} {diasDelMes === 1 ? 'día' : 'días'}
           </Text>
-          <Ionicons
-            name={expandido ? 'chevron-up' : 'chevron-down'}
-            size={20}
-            color={colors.textMuted}
-          />
+          {/* Un solo glyph que rota: continuidad en vez de swap */}
+          <Animated.View style={{ transform: [{ rotate: rotacion }] }}>
+            <Ionicons name="chevron-down" size={20} color={colors.textMuted} />
+          </Animated.View>
         </View>
       </View>
 
-      {/* Cabecera de días */}
       <View style={styles.fila}>
         {INICIALES.map((d, i) => (
           <View key={i} style={styles.inicialWrap}>
@@ -226,7 +265,7 @@ export const HabitHeatmap: React.FC<HabitHeatmapProps> = ({ fechas }) => {
 const styles = StyleSheet.create({
   contenedor: {
     borderRadius: 16,
-    borderWidth: 1,
+    borderWidth: StyleSheet.hairlineWidth,
     padding: 16,
   },
   encabezado: {

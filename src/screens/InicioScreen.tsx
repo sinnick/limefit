@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useRef, useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -6,9 +6,13 @@ import {
   Pressable,
   StyleSheet,
   RefreshControl,
+  Animated,
+  Easing,
+  AccessibilityInfo,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTheme } from '../hooks/useTheme';
 import { fontFamily } from '../constants/theme';
@@ -21,13 +25,15 @@ import { calcularRachaAsistencia, diaKey } from '../utils/asistenciaStats';
 import { Loading, HabitHeatmap, UserHeader, SyncStatusBadge } from '../components';
 
 // ============================================================================
-// InicioScreen — home simple: marcar el día, ver la constancia, entrar a la rutina.
+// InicioScreen — home simple: marcar el día, ver la constancia, ir a la rutina.
 //
-// Jerarquía (ui-taste): el hero de RACHA es la firma de la pantalla — número
-// gigante en Bebas. El accent rojo se reserva para datos y acción; las
-// superficies hacen el trabajo de profundidad. La constancia arranca colapsada
-// a la semana (una fila) y se expande al mes al tocarla, para no comerse la
-// pantalla. Densidad deliberada: hero generoso, fila de rutina compacta.
+// Jerarquía (ui-taste): el hero de RACHA es la firma — número gigante en Bebas.
+// El accent se reserva para datos y acción; las superficies dan la profundidad.
+//
+// Polish (design-eng): marcar el día es la ÚNICA acción diaria, así que es el
+// momento que se celebra — háptica de éxito + pop del número de racha (la celda
+// hace lo suyo en HabitHeatmap). El CTA se transforma con crossfade en vez de
+// cortar entre estados. Entrada con stagger corto.
 // ============================================================================
 
 interface InicioScreenProps {
@@ -35,6 +41,39 @@ interface InicioScreenProps {
 }
 
 const ICON = 20; // un solo tamaño de icono en toda la pantalla
+
+/** Bloque que entra con fade + desplazamiento corto, escalonado por `orden`. */
+const Entrada: React.FC<{ orden: number; activo: boolean; children: React.ReactNode }> = ({
+  orden,
+  activo,
+  children,
+}) => {
+  const v = useRef(new Animated.Value(activo ? 0 : 1)).current;
+
+  useEffect(() => {
+    if (!activo) return;
+    Animated.timing(v, {
+      toValue: 1,
+      duration: 260,
+      delay: orden * 50,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
+  }, [activo, orden, v]);
+
+  return (
+    <Animated.View
+      style={{
+        opacity: v,
+        transform: [
+          { translateY: v.interpolate({ inputRange: [0, 1], outputRange: [8, 0] }) },
+        ],
+      }}
+    >
+      {children}
+    </Animated.View>
+  );
+};
 
 export const InicioScreen: React.FC<InicioScreenProps> = ({ navigation }) => {
   const { colors } = useTheme();
@@ -46,6 +85,19 @@ export const InicioScreen: React.FC<InicioScreenProps> = ({ navigation }) => {
   const historial = useAsistenciaHistorial();
   const marcarAsistencia = useAsistenciaStore((s) => s.marcarAsistencia);
   const { isLoading, refetch, isRefetching } = useRutinasQuery();
+
+  const [reduceMotion, setReduceMotion] = useState(false);
+  useEffect(() => {
+    let vivo = true;
+    AccessibilityInfo.isReduceMotionEnabled().then((v) => {
+      if (vivo) setReduceMotion(v);
+    });
+    const sub = AccessibilityInfo.addEventListener('reduceMotionChanged', setReduceMotion);
+    return () => {
+      vivo = false;
+      sub.remove();
+    };
+  }, []);
 
   // Fechas del socio logueado (el store guarda por DNI).
   const fechas = useMemo(() => {
@@ -59,13 +111,80 @@ export const InicioScreen: React.FC<InicioScreenProps> = ({ navigation }) => {
     return fechas.some((f) => diaKey(f) === hoy);
   }, [fechas]);
 
+  // --- Animaciones ---
+  const popRacha = useRef(new Animated.Value(1)).current; // número que sube
+  const escalaCta = useRef(new Animated.Value(1)).current; // press del CTA
+  const fadeCta = useRef(new Animated.Value(1)).current; // crossfade de estado
+
+  // El número de racha hace pop cuando crece. Nunca al montar.
+  const rachaPrevia = useRef(racha.actual);
+  useEffect(() => {
+    if (racha.actual > rachaPrevia.current && !reduceMotion) {
+      popRacha.setValue(1);
+      Animated.sequence([
+        Animated.spring(popRacha, {
+          toValue: 1.14,
+          speed: 50,
+          bounciness: 10,
+          useNativeDriver: true,
+        }),
+        Animated.spring(popRacha, {
+          toValue: 1,
+          speed: 20,
+          bounciness: 6,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }
+    rachaPrevia.current = racha.actual;
+  }, [racha.actual, reduceMotion, popRacha]);
+
+  // Crossfade del contenido del CTA al cambiar de estado (transformar, no cortar).
+  const yaHoyPrevio = useRef(yaHoy);
+  useEffect(() => {
+    if (yaHoy !== yaHoyPrevio.current && !reduceMotion) {
+      fadeCta.setValue(0.35);
+      Animated.timing(fadeCta, {
+        toValue: 1,
+        duration: 220,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }).start();
+    }
+    yaHoyPrevio.current = yaHoy;
+  }, [yaHoy, reduceMotion, fadeCta]);
+
   const handleMarcar = () => {
-    if (!yaHoy) marcarAsistencia({ metodo: 'manual' });
+    if (yaHoy) return;
+    // Háptica primero: la confirmación táctil debe coincidir con el toque.
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+    marcarAsistencia({ metodo: 'manual' });
+  };
+
+  // Press: hundido inmediato, release con spring (RN no interpola el estilo
+  // de `pressed`, así que el rebote lo damos nosotros).
+  const alPresionar = () => {
+    Animated.spring(escalaCta, {
+      toValue: 0.97,
+      speed: 50,
+      bounciness: 0,
+      useNativeDriver: true,
+    }).start();
+  };
+  const alSoltar = () => {
+    Animated.spring(escalaCta, {
+      toValue: 1,
+      speed: 30,
+      bounciness: 8,
+      useNativeDriver: true,
+    }).start();
   };
 
   if (isLoading) {
     return <Loading fullScreen message="Cargando..." />;
   }
+
+  const listo = yaHoy;
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -83,88 +202,117 @@ export const InicioScreen: React.FC<InicioScreenProps> = ({ navigation }) => {
       >
         <UserHeader />
 
-        {/* ---- Hero de racha (firma de la pantalla) ---- */}
-        <View style={styles.hero}>
-          <View style={styles.rachaRow}>
-            <Text style={[styles.rachaNumero, { color: colors.accent }]}>{racha.actual}</Text>
-            <View style={styles.rachaMeta}>
-              <Text style={[styles.rachaLabel, { color: colors.textPrimary }]}>
-                {racha.actual === 1 ? 'día seguido' : 'días seguidos'}
-              </Text>
-              <Text style={[styles.rachaSub, { color: colors.textSecondary }]}>
-                {racha.actual === 0
-                  ? 'Sin racha activa'
-                  : `Tu mejor racha: ${racha.mejor}`}
-              </Text>
-              <View style={styles.syncRow}>
-                <SyncStatusBadge />
+        {/* ---- Hero de racha ---- */}
+        <Entrada orden={0} activo={!reduceMotion}>
+          <View style={styles.hero}>
+            <View style={styles.rachaRow}>
+              <Animated.Text
+                style={[
+                  styles.rachaNumero,
+                  { color: colors.accent, transform: [{ scale: popRacha }] },
+                ]}
+              >
+                {racha.actual}
+              </Animated.Text>
+              <View style={styles.rachaMeta}>
+                <Text style={[styles.rachaLabel, { color: colors.textPrimary }]}>
+                  {racha.actual === 1 ? 'día seguido' : 'días seguidos'}
+                </Text>
+                <Text style={[styles.rachaSub, { color: colors.textSecondary }]}>
+                  {racha.actual === 0 ? 'Sin racha activa' : `Tu mejor racha: ${racha.mejor}`}
+                </Text>
+                <View style={styles.syncRow}>
+                  <SyncStatusBadge />
+                </View>
               </View>
             </View>
           </View>
-
-        </View>
+        </Entrada>
 
         {/* ---- Acción principal ---- */}
-        <View style={styles.ctaWrap}>
-          <Pressable
-            onPress={handleMarcar}
-            disabled={yaHoy}
-            accessibilityRole="button"
-            accessibilityLabel={yaHoy ? 'Ya registraste hoy' : 'Marcar que fuiste al gym hoy'}
-            style={({ pressed }) => [
-              styles.cta,
-              {
-                backgroundColor: yaHoy ? colors.surface : colors.accent,
-                borderColor: yaHoy ? colors.accent : 'transparent',
-                transform: [{ scale: pressed ? 0.98 : 1 }],
-                opacity: pressed ? 0.9 : 1,
-              },
-            ]}
-          >
-            <Ionicons
-              name={yaHoy ? 'checkmark-circle' : 'add-circle-outline'}
-              size={ICON}
-              color={yaHoy ? colors.accent : colors.white}
-            />
-            <Text style={[styles.ctaText, { color: yaHoy ? colors.accent : colors.white }]}>
-              {yaHoy ? 'Listo por hoy' : 'Fui al gym hoy'}
+        <Entrada orden={1} activo={!reduceMotion}>
+          <View style={styles.ctaWrap}>
+            <Animated.View style={{ transform: [{ scale: escalaCta }] }}>
+              <Pressable
+                onPress={handleMarcar}
+                onPressIn={listo ? undefined : alPresionar}
+                onPressOut={listo ? undefined : alSoltar}
+                disabled={listo}
+                accessibilityRole="button"
+                accessibilityLabel={
+                  listo ? 'Ya registraste hoy' : 'Marcar que fuiste al gym hoy'
+                }
+                style={[
+                  styles.cta,
+                  {
+                    // Estado cumplido = voz baja (hairline neutro). El accent
+                    // sólido queda para cuando TODAVÍA falta marcar.
+                    backgroundColor: listo ? 'transparent' : colors.accent,
+                    borderColor: listo ? colors.border : 'transparent',
+                  },
+                ]}
+              >
+                <Animated.View style={[styles.ctaContenido, { opacity: fadeCta }]}>
+                  <Ionicons
+                    name={listo ? 'checkmark-circle' : 'add-circle-outline'}
+                    size={ICON}
+                    color={listo ? colors.accent : colors.white}
+                  />
+                  <Text
+                    style={[
+                      styles.ctaText,
+                      { color: listo ? colors.textSecondary : colors.white },
+                    ]}
+                  >
+                    {listo ? 'Listo por hoy' : 'Fui al gym hoy'}
+                  </Text>
+                </Animated.View>
+              </Pressable>
+            </Animated.View>
+          </View>
+        </Entrada>
+
+        {/* ---- Constancia (semana; se expande al mes) ---- */}
+        <Entrada orden={2} activo={!reduceMotion}>
+          <View style={styles.section}>
+            <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Constancia</Text>
+            <HabitHeatmap fechas={fechas} />
+          </View>
+        </Entrada>
+
+        {/* ---- Rutina: fila con hairline ---- */}
+        <Entrada orden={3} activo={!reduceMotion}>
+          <View style={styles.section}>
+            <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
+              Entrenamiento
             </Text>
-          </Pressable>
-        </View>
-
-        {/* ---- Constancia (colapsada a la semana; se expande al mes) ---- */}
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Constancia</Text>
-          <HabitHeatmap fechas={fechas} />
-        </View>
-
-        {/* ---- Rutina: fila con hairline, sin card ---- */}
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Entrenamiento</Text>
-          <Pressable
-            onPress={() => navigation.navigate('Rutinas')}
-            accessibilityRole="button"
-            accessibilityLabel="Ver mis rutinas"
-            style={({ pressed }) => [
-              styles.fila,
-              {
-                borderTopColor: colors.border,
-                borderBottomColor: colors.border,
-                backgroundColor: pressed ? colors.surface : 'transparent',
-              },
-            ]}
-          >
-            <View>
-              <Text style={[styles.filaTitulo, { color: colors.textPrimary }]}>Mis rutinas</Text>
-              <Text style={[styles.filaSub, { color: colors.textSecondary }]}>
-                {rutinas.length === 0
-                  ? 'Todavía no tenés rutinas asignadas'
-                  : `${rutinas.length} ${rutinas.length === 1 ? 'rutina asignada' : 'rutinas asignadas'}`}
-              </Text>
-            </View>
-            <Ionicons name="chevron-forward" size={ICON} color={colors.textMuted} />
-          </Pressable>
-        </View>
+            <Pressable
+              onPress={() => navigation.navigate('Rutinas')}
+              accessibilityRole="button"
+              accessibilityLabel="Ver mis rutinas"
+              style={({ pressed }) => [
+                styles.fila,
+                {
+                  borderTopColor: colors.border,
+                  borderBottomColor: colors.border,
+                  backgroundColor: pressed ? colors.surface : 'transparent',
+                },
+              ]}
+            >
+              <View>
+                <Text style={[styles.filaTitulo, { color: colors.textPrimary }]}>
+                  Mis rutinas
+                </Text>
+                <Text style={[styles.filaSub, { color: colors.textSecondary }]}>
+                  {rutinas.length === 0
+                    ? 'Todavía no tenés rutinas asignadas'
+                    : `${rutinas.length} ${rutinas.length === 1 ? 'rutina asignada' : 'rutinas asignadas'}`}
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={ICON} color={colors.textMuted} />
+            </Pressable>
+          </View>
+        </Entrada>
 
         <Pressable
           onPress={logout}
@@ -221,13 +369,16 @@ const styles = StyleSheet.create({
     marginBottom: 40,
   },
   cta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
     height: 56,
     borderRadius: 16,
-    borderWidth: 2,
+    borderWidth: StyleSheet.hairlineWidth,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  ctaContenido: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   ctaText: {
     fontFamily: fontFamily.bold,
@@ -246,14 +397,15 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
     marginBottom: 12,
   },
+
   // Fila de rutina — densidad compacta
   fila: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingVertical: 16,
-    borderTopWidth: 1,
-    borderBottomWidth: 1,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderBottomWidth: StyleSheet.hairlineWidth,
   },
   filaTitulo: {
     fontFamily: fontFamily.semibold,
