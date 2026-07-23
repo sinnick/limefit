@@ -17,20 +17,17 @@ import { useUser, useUserStore } from '../store/userStore';
 import { useRutinasQuery } from '../services/queries';
 import { useRutinas } from '../store/rutinasStore';
 import { useAsistenciaStore, useAsistenciaHistorial } from '../store/asistenciaStore';
-import {
-  calcularRachaAsistencia,
-  semanaActual,
-  diaKey,
-} from '../utils/asistenciaStats';
+import { calcularRachaAsistencia, diaKey } from '../utils/asistenciaStats';
 import { Loading, HabitHeatmap, UserHeader, SyncStatusBadge } from '../components';
 
 // ============================================================================
 // InicioScreen — home simple: marcar el día, ver la constancia, entrar a la rutina.
 //
 // Jerarquía (ui-taste): el hero de RACHA es la firma de la pantalla — número
-// gigante en Bebas coronando la semana en barras segmentadas. El accent rojo se
-// reserva para datos y acción; las superficies hacen el trabajo de profundidad.
-// Densidad deliberada: hero generoso, heatmap medio, fila de rutina compacta.
+// gigante en Bebas. El accent rojo se reserva para datos y acción; las
+// superficies hacen el trabajo de profundidad. La constancia arranca colapsada
+// a la semana (una fila) y se expande al mes al tocarla, para no comerse la
+// pantalla. Densidad deliberada: hero generoso, fila de rutina compacta.
 // ============================================================================
 
 interface InicioScreenProps {
@@ -57,7 +54,6 @@ export const InicioScreen: React.FC<InicioScreenProps> = ({ navigation }) => {
   }, [historial, user?.DNI]);
 
   const racha = useMemo(() => calcularRachaAsistencia(fechas), [fechas]);
-  const semana = useMemo(() => semanaActual(fechas), [fechas]);
   const yaHoy = useMemo(() => {
     const hoy = diaKey(new Date().toISOString());
     return fechas.some((f) => diaKey(f) === hoy);
@@ -106,35 +102,6 @@ export const InicioScreen: React.FC<InicioScreenProps> = ({ navigation }) => {
             </View>
           </View>
 
-          {/* Semana en barras segmentadas */}
-          <View style={styles.semanaRow}>
-            {semana.map((d, i) => (
-              <View key={i} style={styles.tickWrap}>
-                <View
-                  style={[
-                    styles.tick,
-                    {
-                      backgroundColor: d.asistio
-                        ? colors.accent
-                        : d.futuro
-                          ? 'transparent'
-                          : colors.surfaceLight,
-                      // Borde reservado en todas: marcar no cambia dimensiones.
-                      borderColor: d.esHoy ? colors.accent : 'transparent',
-                    },
-                  ]}
-                />
-                <Text
-                  style={[
-                    styles.tickLabel,
-                    { color: d.esHoy ? colors.textPrimary : colors.textMuted },
-                  ]}
-                >
-                  {d.inicial}
-                </Text>
-              </View>
-            ))}
-          </View>
         </View>
 
         {/* ---- Acción principal ---- */}
@@ -165,17 +132,10 @@ export const InicioScreen: React.FC<InicioScreenProps> = ({ navigation }) => {
           </Pressable>
         </View>
 
-        {/* ---- Constancia ---- */}
+        {/* ---- Constancia (colapsada a la semana; se expande al mes) ---- */}
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Constancia</Text>
-          <View
-            style={[
-              styles.panel,
-              { backgroundColor: colors.card, borderColor: colors.border },
-            ]}
-          >
-            <HabitHeatmap fechas={fechas} />
-          </View>
+          <HabitHeatmap fechas={fechas} />
         </View>
 
         {/* ---- Rutina: fila con hairline, sin card ---- */}
@@ -255,28 +215,6 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
 
-  // Semana en ticks
-  semanaRow: {
-    flexDirection: 'row',
-    gap: 8,
-    marginTop: 24,
-  },
-  tickWrap: {
-    flex: 1,
-    alignItems: 'center',
-    gap: 8,
-  },
-  tick: {
-    width: '100%',
-    height: 40,
-    borderRadius: 8,
-    borderWidth: 2,
-  },
-  tickLabel: {
-    fontFamily: fontFamily.medium,
-    fontSize: 13,
-  },
-
   // CTA
   ctaWrap: {
     paddingHorizontal: 20,
@@ -308,12 +246,6 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
     marginBottom: 12,
   },
-  panel: {
-    borderRadius: 16,
-    borderWidth: 1,
-    padding: 16,
-  },
-
   // Fila de rutina — densidad compacta
   fila: {
     flexDirection: 'row',

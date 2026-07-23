@@ -1,204 +1,257 @@
-import React, { useMemo } from 'react';
-import { View, Text, StyleSheet, Dimensions } from 'react-native';
+import React, { useMemo, useState } from 'react';
+import {
+  View,
+  Text,
+  Pressable,
+  StyleSheet,
+  LayoutAnimation,
+  Platform,
+  UIManager,
+} from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../hooks/useTheme';
 import { fontFamily } from '../constants/theme';
 import { diaKey } from '../utils/asistenciaStats';
 
 // ============================================================================
-// HabitHeatmap — grilla de constancia estilo "commit graph" de GitHub.
+// HabitHeatmap — tracker de constancia colapsable.
 //
-// Decisiones de diseño (ui-taste):
-//  · 13 semanas (un trimestre) que ENTRAN en pantalla — sin scroll horizontal.
-//    26 semanas con scroll se leían como un rectángulo gris muerto.
-//  · Celda dimensionada al ancho disponible, radius 8 (nada de 2-3px).
-//  · El día de HOY lleva anillo; TODAS las celdas reservan el borde en
-//    transparente para que marcar asistencia no cambie dimensiones.
-//  · Aritmética de fechas inmutable (nunca `setDate` sobre fecha compartida).
+//  · Colapsado (default): SOLO la semana en curso, 7 cuadrados horizontales.
+//    Ocupa una fila; mantiene la home corta.
+//  · Expandido (al tocar): la grilla del mes completo. La semana en curso es
+//    una de sus filas, así que la transición se lee como "abrir" la misma vista.
+//
+// Semántica de la celda: ido = accent sólido · pasado sin ir = bloque apagado ·
+// futuro = slot con contorno · hoy = anillo accent. El borde está reservado en
+// TODAS las celdas para que marcar asistencia no cambie dimensiones.
 // ============================================================================
 
-interface HabitHeatmapProps {
-  /** Fechas ISO en las que hubo asistencia (repetidas del mismo día dan igual). */
-  fechas: string[];
-  /** Semanas hacia atrás a mostrar, incluida la actual. */
-  weeks?: number;
+if (
+  Platform.OS === 'android' &&
+  UIManager.setLayoutAnimationEnabledExperimental
+) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 
-const GAP = 4;
-const RING = 2; // borde reservado en todas las celdas
-const LABEL_W = 24; // columna de iniciales de día
-const SCREEN_PAD = 20; // padding lateral de la pantalla
-const CARD_PAD = 16; // padding interno del contenedor
+interface HabitHeatmapProps {
+  /** Fechas ISO en las que hubo asistencia. */
+  fechas: string[];
+}
 
-const MESES = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
-// Domingo arriba, como GitHub. Solo se rotulan lun/mié/vie para no saturar.
-const DIAS_LABEL = ['', 'L', '', 'M', '', 'V', ''];
+const GAP = 8;
+const RING = 2;
+const INICIALES = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
+const MESES = [
+  'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+  'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
+];
 
-const sumarDias = (d: Date, n: number): Date =>
-  new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);
+interface Celda {
+  dia: number | null; // null = relleno fuera del mes
+  asistio: boolean;
+  futuro: boolean;
+  esHoy: boolean;
+}
 
-export const HabitHeatmap: React.FC<HabitHeatmapProps> = ({ fechas, weeks = 13 }) => {
+export const HabitHeatmap: React.FC<HabitHeatmapProps> = ({ fechas }) => {
   const { colors } = useTheme();
+  const [expandido, setExpandido] = useState(false);
 
-  // Celda calculada para que las `weeks` columnas entren sin scroll.
-  const cell = useMemo(() => {
-    const disponible =
-      Dimensions.get('window').width - SCREEN_PAD * 2 - CARD_PAD * 2 - LABEL_W;
-    return Math.floor((disponible - (weeks - 1) * GAP) / weeks);
-  }, [weeks]);
-
-  const { columnas, monthLabels, total } = useMemo(() => {
+  const { semanas, filaActual, nombreMes, diasDelMes } = useMemo(() => {
+    const set = new Set(fechas.map(diaKey));
     const ahora = new Date();
     const hoy = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate());
-    const dias = new Set(fechas.map(diaKey));
+    const año = hoy.getFullYear();
+    const mes = hoy.getMonth();
 
-    const domingoActual = sumarDias(hoy, -hoy.getDay());
-    const inicio = sumarDias(domingoActual, -(weeks - 1) * 7);
+    const primero = new Date(año, mes, 1);
+    // Índice de columna con lunes=0.
+    const offset = (primero.getDay() + 6) % 7;
+    const totalDias = new Date(año, mes + 1, 0).getDate();
 
-    const cols: { asistio: boolean; futuro: boolean; esHoy: boolean }[][] = [];
-    const labels: { col: number; texto: string }[] = [];
-    let ultimoMes = -1;
-
-    for (let w = 0; w < weeks; w++) {
-      const semana = [];
-      for (let d = 0; d < 7; d++) {
-        const fecha = sumarDias(inicio, w * 7 + d);
-        const futuro = fecha.getTime() > hoy.getTime();
-        semana.push({
-          asistio: !futuro && dias.has(diaKey(fecha.toISOString())),
-          futuro,
-          esHoy: fecha.getTime() === hoy.getTime(),
-        });
-      }
-      const primer = sumarDias(inicio, w * 7);
-      if (primer.getMonth() !== ultimoMes) {
-        ultimoMes = primer.getMonth();
-        labels.push({ col: w, texto: MESES[primer.getMonth()] });
-      }
-      cols.push(semana);
+    const celdas: Celda[] = [];
+    for (let i = 0; i < offset; i++) {
+      celdas.push({ dia: null, asistio: false, futuro: false, esHoy: false });
+    }
+    for (let d = 1; d <= totalDias; d++) {
+      const fecha = new Date(año, mes, d);
+      const futuro = fecha.getTime() > hoy.getTime();
+      celdas.push({
+        dia: d,
+        asistio: !futuro && set.has(diaKey(fecha.toISOString())),
+        futuro,
+        esHoy: fecha.getTime() === hoy.getTime(),
+      });
+    }
+    while (celdas.length % 7 !== 0) {
+      celdas.push({ dia: null, asistio: false, futuro: false, esHoy: false });
     }
 
-    return { columnas: cols, monthLabels: labels, total: dias.size };
-  }, [fechas, weeks]);
+    const filas: Celda[][] = [];
+    for (let i = 0; i < celdas.length; i += 7) filas.push(celdas.slice(i, i + 7));
 
-  const step = cell + GAP;
+    const idxFilaActual = filas.findIndex((f) => f.some((c) => c.esHoy));
+
+    // Días del mes con asistencia (para el contador del encabezado).
+    const cuenta = celdas.filter((c) => c.asistio).length;
+
+    return {
+      semanas: filas,
+      filaActual: idxFilaActual >= 0 ? idxFilaActual : filas.length - 1,
+      nombreMes: MESES[mes],
+      diasDelMes: cuenta,
+    };
+  }, [fechas]);
+
+  const toggle = () => {
+    LayoutAnimation.configureNext(
+      LayoutAnimation.create(200, LayoutAnimation.Types.easeInEaseOut, LayoutAnimation.Properties.opacity)
+    );
+    setExpandido((v) => !v);
+  };
+
+  const colorFondo = (c: Celda): string => {
+    if (c.dia === null) return 'transparent';
+    if (c.asistio) return colors.accent;
+    if (c.futuro) return 'transparent';
+    return colors.surfaceLight;
+  };
+
+  const colorBorde = (c: Celda): string => {
+    if (c.dia === null) return 'transparent';
+    if (c.esHoy) return c.asistio ? colors.accentLight : colors.accent;
+    if (c.futuro) return colors.border;
+    return 'transparent';
+  };
+
+  const renderFila = (fila: Celda[], key: number) => (
+    <View key={key} style={styles.fila}>
+      {fila.map((c, i) => (
+        <View
+          key={i}
+          style={[
+            styles.celda,
+            { backgroundColor: colorFondo(c), borderColor: colorBorde(c) },
+          ]}
+        >
+          {c.dia !== null && (
+            <Text
+              style={[
+                styles.celdaTexto,
+                {
+                  color: c.asistio
+                    ? colors.white
+                    : c.futuro
+                      ? colors.textMuted
+                      : colors.textSecondary,
+                },
+              ]}
+            >
+              {c.dia}
+            </Text>
+          )}
+        </View>
+      ))}
+    </View>
+  );
 
   return (
-    <View>
-      {/* Etiquetas de mes */}
-      <View style={[styles.monthRow, { marginLeft: LABEL_W }]}>
-        {columnas.map((_, w) => {
-          const label = monthLabels.find((m) => m.col === w);
-          return (
-            <View key={w} style={{ width: step }}>
-              {label ? (
-                <Text style={[styles.monthText, { color: colors.textMuted }]}>{label.texto}</Text>
-              ) : null}
-            </View>
-          );
-        })}
+    <Pressable
+      onPress={toggle}
+      accessibilityRole="button"
+      accessibilityLabel={expandido ? 'Ver solo esta semana' : 'Ver el mes completo'}
+      accessibilityState={{ expanded: expandido }}
+      style={({ pressed }) => [
+        styles.contenedor,
+        {
+          backgroundColor: pressed ? colors.surface : colors.card,
+          borderColor: colors.border,
+        },
+      ]}
+    >
+      {/* Encabezado: mes + contador + affordance */}
+      <View style={styles.encabezado}>
+        <Text style={[styles.mes, { color: colors.textPrimary }]}>
+          {expandido ? nombreMes : 'Esta semana'}
+        </Text>
+        <View style={styles.encabezadoDer}>
+          <Text style={[styles.contador, { color: colors.textSecondary }]}>
+            {diasDelMes} {diasDelMes === 1 ? 'día' : 'días'}
+          </Text>
+          <Ionicons
+            name={expandido ? 'chevron-up' : 'chevron-down'}
+            size={20}
+            color={colors.textMuted}
+          />
+        </View>
       </View>
 
-      <View style={styles.gridRow}>
-        <View style={{ width: LABEL_W }}>
-          {DIAS_LABEL.map((d, i) => (
-            <View key={i} style={{ height: step, justifyContent: 'center' }}>
-              <Text style={[styles.dayText, { color: colors.textMuted }]}>{d}</Text>
-            </View>
-          ))}
-        </View>
-
-        {columnas.map((semana, w) => (
-          <View key={w}>
-            {semana.map((c, d) => (
-              <View
-                key={d}
-                style={[
-                  styles.cell,
-                  {
-                    width: cell,
-                    height: cell,
-                    marginRight: GAP,
-                    marginBottom: GAP,
-                    backgroundColor: c.futuro
-                      ? 'transparent'
-                      : c.asistio
-                        ? colors.accent
-                        : colors.surfaceLight,
-                    // Borde SIEMPRE presente (transparente salvo hoy): marcar
-                    // asistencia no debe cambiar las dimensiones de la celda.
-                    borderColor: c.esHoy
-                      ? c.asistio
-                        ? colors.accentLight
-                        : colors.accent
-                      : 'transparent',
-                  },
-                ]}
-              />
-            ))}
+      {/* Cabecera de días */}
+      <View style={styles.fila}>
+        {INICIALES.map((d, i) => (
+          <View key={i} style={styles.inicialWrap}>
+            <Text style={[styles.inicial, { color: colors.textMuted }]}>{d}</Text>
           </View>
         ))}
       </View>
 
-      <View style={styles.footer}>
-        {total === 0 ? (
-          <Text style={[styles.footerText, { color: colors.textSecondary }]}>
-            Marcá tu primer día y arrancá la racha.
-          </Text>
-        ) : (
-          <Text style={[styles.footerText, { color: colors.textSecondary }]}>
-            {total} {total === 1 ? 'día' : 'días'} en los últimos 3 meses
-          </Text>
-        )}
-        <View style={styles.legend}>
-          <View
-            style={[styles.legendCell, { backgroundColor: colors.surfaceLight }]}
-          />
-          <View style={[styles.legendCell, { backgroundColor: colors.accent }]} />
-        </View>
-      </View>
-    </View>
+      {expandido
+        ? semanas.map((f, i) => renderFila(f, i))
+        : renderFila(semanas[filaActual], filaActual)}
+    </Pressable>
   );
 };
 
 const styles = StyleSheet.create({
-  monthRow: {
-    flexDirection: 'row',
-    marginBottom: 8,
+  contenedor: {
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: 16,
   },
-  monthText: {
-    fontFamily: fontFamily.medium,
-    fontSize: 12,
-    letterSpacing: 0.5,
-  },
-  gridRow: {
-    flexDirection: 'row',
-  },
-  dayText: {
-    fontFamily: fontFamily.medium,
-    fontSize: 12,
-  },
-  cell: {
-    borderRadius: 8,
-    borderWidth: RING,
-  },
-  footer: {
+  encabezado: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginTop: 12,
+    marginBottom: 12,
   },
-  footerText: {
-    fontFamily: fontFamily.regular,
-    fontSize: 14,
+  mes: {
+    fontFamily: fontFamily.bold,
+    fontSize: 20,
+    letterSpacing: 1,
   },
-  legend: {
+  encabezadoDer: {
     flexDirection: 'row',
+    alignItems: 'center',
     gap: 4,
   },
-  legendCell: {
-    width: 12,
-    height: 12,
+  contador: {
+    fontFamily: fontFamily.medium,
+    fontSize: 14,
+  },
+  fila: {
+    flexDirection: 'row',
+    gap: GAP,
+    marginBottom: GAP,
+  },
+  inicialWrap: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  inicial: {
+    fontFamily: fontFamily.medium,
+    fontSize: 13,
+  },
+  celda: {
+    flex: 1,
+    aspectRatio: 1,
     borderRadius: 8,
+    borderWidth: RING,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  celdaTexto: {
+    fontFamily: fontFamily.medium,
+    fontSize: 13,
   },
 });
 
