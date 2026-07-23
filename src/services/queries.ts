@@ -305,6 +305,9 @@ export const useAvisoBannerQuery = () =>
     staleTime: 2 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
     refetchOnWindowFocus: false,
+    // getBanner ya degrada a null ante error; sin reintentos para no insistir
+    // contra un backend que no tiene el endpoint.
+    retry: false,
   });
 
 // --- Mutations (ONLINE-FIRST) ---

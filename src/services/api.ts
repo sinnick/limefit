@@ -201,7 +201,12 @@ api.interceptors.response.use(
     return response;
   },
   (error: AxiosError) => {
-    console.error('[API] Response Error:', error.message);
+    // `silentError` (config por request) evita ensuciar la consola con errores
+    // esperables y no críticos (ej. el banner opcional cuando el backend aún no
+    // tiene el endpoint). El error igual se propaga al llamador.
+    if (!(error.config as { silentError?: boolean } | undefined)?.silentError) {
+      console.error('[API] Response Error:', error.message);
+    }
     return Promise.reject(error);
   }
 );
@@ -769,17 +774,28 @@ export const anunciosApi = {
   },
 
   // POST /anuncios/banner → el aviso de servicio destacado vigente, o null.
+  // El banner es OPCIONAL: si el backend no tiene el endpoint (versión vieja,
+  // aún sin desplegar) o falla, se degrada en silencio a null — nunca rompe la
+  // home ni ensucia la consola.
   getBanner: async (): Promise<AvisoServicio | null> => {
-    const response = await api.post<{ status: string; data: any }>('/anuncios/banner', {});
-    const a = response.data.data;
-    if (!a) return null;
-    return {
-      id: a._id != null ? String(a._id) : '',
-      titulo: a.TITULO ?? '',
-      cuerpo: a.CUERPO ?? '',
-      nivel: a.NIVEL === 'importante' ? 'importante' : 'info',
-      fechaVencimiento: a.FECHA_VENCIMIENTO != null ? String(a.FECHA_VENCIMIENTO) : undefined,
-    };
+    try {
+      const response = await api.post<{ status: string; data: any }>(
+        '/anuncios/banner',
+        {},
+        { silentError: true } as any
+      );
+      const a = response.data.data;
+      if (!a) return null;
+      return {
+        id: a._id != null ? String(a._id) : '',
+        titulo: a.TITULO ?? '',
+        cuerpo: a.CUERPO ?? '',
+        nivel: a.NIVEL === 'importante' ? 'importante' : 'info',
+        fechaVencimiento: a.FECHA_VENCIMIENTO != null ? String(a.FECHA_VENCIMIENTO) : undefined,
+      };
+    } catch {
+      return null;
+    }
   },
 };
 
