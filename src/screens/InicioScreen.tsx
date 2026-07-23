@@ -3,7 +3,7 @@ import {
   View,
   Text,
   ScrollView,
-  TouchableOpacity,
+  Pressable,
   StyleSheet,
   RefreshControl,
 } from 'react-native';
@@ -11,26 +11,33 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTheme } from '../hooks/useTheme';
-import { fontFamily, shadows } from '../constants/theme';
+import { fontFamily } from '../constants/theme';
 import { RootStackParamList } from '../types';
 import { useUser, useUserStore } from '../store/userStore';
 import { useRutinasQuery } from '../services/queries';
 import { useRutinas } from '../store/rutinasStore';
 import { useAsistenciaStore, useAsistenciaHistorial } from '../store/asistenciaStore';
-import { Loading, Card, HabitHeatmap, UserHeader, SyncStatusBadge } from '../components';
+import {
+  calcularRachaAsistencia,
+  semanaActual,
+  diaKey,
+} from '../utils/asistenciaStats';
+import { Loading, HabitHeatmap, UserHeader, SyncStatusBadge } from '../components';
 
 // ============================================================================
-// InicioScreen (versión simple). Solo lo esencial que pidió el usuario:
-//   1. Botón "Fui al gym hoy" → marca asistencia (asistenciaStore, offline-first).
-//   2. Heatmap de asistencia estilo commit graph de GitHub.
-//   3. Acceso a "Mis Rutinas".
-// El resto de pantallas siguen registradas en el stack (App.tsx) pero sin
-// accesos desde acá — se pueden reactivar cuando haga falta.
+// InicioScreen — home simple: marcar el día, ver la constancia, entrar a la rutina.
+//
+// Jerarquía (ui-taste): el hero de RACHA es la firma de la pantalla — número
+// gigante en Bebas coronando la semana en barras segmentadas. El accent rojo se
+// reserva para datos y acción; las superficies hacen el trabajo de profundidad.
+// Densidad deliberada: hero generoso, heatmap medio, fila de rutina compacta.
 // ============================================================================
 
 interface InicioScreenProps {
   navigation: NativeStackNavigationProp<RootStackParamList, 'Inicio'>;
 }
+
+const ICON = 20; // un solo tamaño de icono en toda la pantalla
 
 export const InicioScreen: React.FC<InicioScreenProps> = ({ navigation }) => {
   const { colors } = useTheme();
@@ -41,25 +48,23 @@ export const InicioScreen: React.FC<InicioScreenProps> = ({ navigation }) => {
 
   const historial = useAsistenciaHistorial();
   const marcarAsistencia = useAsistenciaStore((s) => s.marcarAsistencia);
-
   const { isLoading, refetch, isRefetching } = useRutinasQuery();
 
-  // ¿Ya registró hoy? Derivado del historial para que sea reactivo al marcar.
-  const yaHoy = useMemo(() => {
+  // Fechas del socio logueado (el store guarda por DNI).
+  const fechas = useMemo(() => {
     const dni = user?.DNI ?? '';
-    const hoy = new Date();
-    const claveHoy = `${hoy.getFullYear()}-${hoy.getMonth()}-${hoy.getDate()}`;
-    return historial.some((a) => {
-      const d = new Date(a.fecha);
-      return a.dni === dni && `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}` === claveHoy;
-    });
+    return historial.filter((a) => a.dni === dni).map((a) => a.fecha);
   }, [historial, user?.DNI]);
 
-  const fechasAsistencia = useMemo(() => historial.map((a) => a.fecha), [historial]);
+  const racha = useMemo(() => calcularRachaAsistencia(fechas), [fechas]);
+  const semana = useMemo(() => semanaActual(fechas), [fechas]);
+  const yaHoy = useMemo(() => {
+    const hoy = diaKey(new Date().toISOString());
+    return fechas.some((f) => diaKey(f) === hoy);
+  }, [fechas]);
 
   const handleMarcar = () => {
-    if (yaHoy) return;
-    marcarAsistencia({ metodo: 'manual' });
+    if (!yaHoy) marcarAsistencia({ metodo: 'manual' });
   };
 
   if (isLoading) {
@@ -69,8 +74,7 @@ export const InicioScreen: React.FC<InicioScreenProps> = ({ navigation }) => {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 24 }]}
+        contentContainerStyle={{ paddingBottom: insets.bottom + 32 }}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
@@ -83,148 +87,259 @@ export const InicioScreen: React.FC<InicioScreenProps> = ({ navigation }) => {
       >
         <UserHeader />
 
-        <View style={styles.syncRow}>
-          <SyncStatusBadge />
+        {/* ---- Hero de racha (firma de la pantalla) ---- */}
+        <View style={styles.hero}>
+          <View style={styles.rachaRow}>
+            <Text style={[styles.rachaNumero, { color: colors.accent }]}>{racha.actual}</Text>
+            <View style={styles.rachaMeta}>
+              <Text style={[styles.rachaLabel, { color: colors.textPrimary }]}>
+                {racha.actual === 1 ? 'día seguido' : 'días seguidos'}
+              </Text>
+              <Text style={[styles.rachaSub, { color: colors.textSecondary }]}>
+                {racha.actual === 0
+                  ? 'Sin racha activa'
+                  : `Tu mejor racha: ${racha.mejor}`}
+              </Text>
+              <View style={styles.syncRow}>
+                <SyncStatusBadge />
+              </View>
+            </View>
+          </View>
+
+          {/* Semana en barras segmentadas */}
+          <View style={styles.semanaRow}>
+            {semana.map((d, i) => (
+              <View key={i} style={styles.tickWrap}>
+                <View
+                  style={[
+                    styles.tick,
+                    {
+                      backgroundColor: d.asistio
+                        ? colors.accent
+                        : d.futuro
+                          ? 'transparent'
+                          : colors.surfaceLight,
+                      // Borde reservado en todas: marcar no cambia dimensiones.
+                      borderColor: d.esHoy ? colors.accent : 'transparent',
+                    },
+                  ]}
+                />
+                <Text
+                  style={[
+                    styles.tickLabel,
+                    { color: d.esHoy ? colors.textPrimary : colors.textMuted },
+                  ]}
+                >
+                  {d.inicial}
+                </Text>
+              </View>
+            ))}
+          </View>
         </View>
 
-        {/* Botón "Fui al gym hoy" */}
-        <View style={styles.section}>
-          <TouchableOpacity
-            activeOpacity={yaHoy ? 1 : 0.85}
+        {/* ---- Acción principal ---- */}
+        <View style={styles.ctaWrap}>
+          <Pressable
             onPress={handleMarcar}
-            style={[
-              styles.checkinButton,
+            disabled={yaHoy}
+            accessibilityRole="button"
+            accessibilityLabel={yaHoy ? 'Ya registraste hoy' : 'Marcar que fuiste al gym hoy'}
+            style={({ pressed }) => [
+              styles.cta,
               {
-                backgroundColor: yaHoy ? colors.surfaceLight : colors.accent,
+                backgroundColor: yaHoy ? colors.surface : colors.accent,
                 borderColor: yaHoy ? colors.accent : 'transparent',
-                borderWidth: yaHoy ? 1.5 : 0,
+                transform: [{ scale: pressed ? 0.98 : 1 }],
+                opacity: pressed ? 0.9 : 1,
               },
             ]}
           >
             <Ionicons
-              name={yaHoy ? 'checkmark-circle' : 'barbell'}
-              size={26}
-              color={yaHoy ? colors.accent : colors.black}
+              name={yaHoy ? 'checkmark-circle' : 'add-circle-outline'}
+              size={ICON}
+              color={yaHoy ? colors.accent : colors.white}
             />
-            <Text
-              style={[
-                styles.checkinText,
-                { color: yaHoy ? colors.accent : colors.black },
-              ]}
-            >
-              {yaHoy ? '¡Registrado hoy!' : 'Fui al gym hoy'}
+            <Text style={[styles.ctaText, { color: yaHoy ? colors.accent : colors.white }]}>
+              {yaHoy ? 'Listo por hoy' : 'Fui al gym hoy'}
             </Text>
-          </TouchableOpacity>
+          </Pressable>
         </View>
 
-        {/* Heatmap de asistencia */}
+        {/* ---- Constancia ---- */}
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Tu constancia</Text>
-          <Card variant="default" padding="lg">
-            <HabitHeatmap fechas={fechasAsistencia} />
-          </Card>
+          <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Constancia</Text>
+          <View
+            style={[
+              styles.panel,
+              { backgroundColor: colors.card, borderColor: colors.border },
+            ]}
+          >
+            <HabitHeatmap fechas={fechas} />
+          </View>
         </View>
 
-        {/* Acceso a rutinas */}
+        {/* ---- Rutina: fila con hairline, sin card ---- */}
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Entrenamiento</Text>
-          <TouchableOpacity activeOpacity={0.85} onPress={() => navigation.navigate('Rutinas')}>
-            <Card variant="default" padding="lg">
-              <View style={styles.rutinaRow}>
-                <View style={[styles.rutinaIcon, { backgroundColor: `${colors.accent}20` }]}>
-                  <Ionicons name="barbell-outline" size={26} color={colors.accent} />
-                </View>
-                <View style={styles.rutinaTextWrap}>
-                  <Text style={[styles.rutinaTitle, { color: colors.textPrimary }]}>Mis Rutinas</Text>
-                  <Text style={[styles.rutinaSubtitle, { color: colors.textSecondary }]}>
-                    {rutinas.length} {rutinas.length === 1 ? 'rutina asignada' : 'rutinas asignadas'}
-                  </Text>
-                </View>
-                <Ionicons name="chevron-forward" size={22} color={colors.textMuted} />
-              </View>
-            </Card>
-          </TouchableOpacity>
+          <Pressable
+            onPress={() => navigation.navigate('Rutinas')}
+            accessibilityRole="button"
+            accessibilityLabel="Ver mis rutinas"
+            style={({ pressed }) => [
+              styles.fila,
+              {
+                borderTopColor: colors.border,
+                borderBottomColor: colors.border,
+                backgroundColor: pressed ? colors.surface : 'transparent',
+              },
+            ]}
+          >
+            <View>
+              <Text style={[styles.filaTitulo, { color: colors.textPrimary }]}>Mis rutinas</Text>
+              <Text style={[styles.filaSub, { color: colors.textSecondary }]}>
+                {rutinas.length === 0
+                  ? 'Todavía no tenés rutinas asignadas'
+                  : `${rutinas.length} ${rutinas.length === 1 ? 'rutina asignada' : 'rutinas asignadas'}`}
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={ICON} color={colors.textMuted} />
+          </Pressable>
         </View>
 
-        {/* Cerrar sesión */}
-        <TouchableOpacity onPress={logout} style={styles.logoutButton}>
-          <Ionicons name="log-out-outline" size={20} color={colors.error} />
-          <Text style={[styles.logoutText, { color: colors.error }]}>Cerrar Sesión</Text>
-        </TouchableOpacity>
+        <Pressable
+          onPress={logout}
+          accessibilityRole="button"
+          style={({ pressed }) => [styles.logout, { opacity: pressed ? 0.6 : 1 }]}
+        >
+          <Text style={[styles.logoutText, { color: colors.textMuted }]}>Cerrar sesión</Text>
+        </Pressable>
       </ScrollView>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {},
-  syncRow: {
+  container: { flex: 1 },
+
+  // Hero — densidad generosa
+  hero: {
     paddingHorizontal: 20,
-    marginBottom: 16,
+    paddingTop: 8,
+    paddingBottom: 32,
   },
-  section: {
-    paddingHorizontal: 20,
-    marginBottom: 24,
-  },
-  sectionTitle: {
-    fontFamily: fontFamily.bold,
-    fontSize: 20,
-    marginBottom: 16,
-  },
-  checkinButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 12,
-    paddingVertical: 20,
-    borderRadius: 20,
-    ...shadows.md,
-  },
-  checkinText: {
-    fontFamily: fontFamily.bold,
-    fontSize: 18,
-  },
-  rutinaRow: {
+  rachaRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 16,
   },
-  rutinaIcon: {
-    width: 52,
-    height: 52,
-    borderRadius: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
+  rachaNumero: {
+    fontFamily: fontFamily.bold, // Bebas Neue
+    fontSize: 72,
+    lineHeight: 76,
   },
-  rutinaTextWrap: {
+  rachaMeta: {
     flex: 1,
+    gap: 4,
   },
-  rutinaTitle: {
+  rachaLabel: {
     fontFamily: fontFamily.bold,
-    fontSize: 16,
-    marginBottom: 2,
+    fontSize: 24,
+    letterSpacing: 1,
   },
-  rutinaSubtitle: {
+  rachaSub: {
     fontFamily: fontFamily.regular,
+    fontSize: 15,
+  },
+  syncRow: {
+    flexDirection: 'row',
+    marginTop: 4,
+  },
+
+  // Semana en ticks
+  semanaRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 24,
+  },
+  tickWrap: {
+    flex: 1,
+    alignItems: 'center',
+    gap: 8,
+  },
+  tick: {
+    width: '100%',
+    height: 40,
+    borderRadius: 8,
+    borderWidth: 2,
+  },
+  tickLabel: {
+    fontFamily: fontFamily.medium,
     fontSize: 13,
   },
-  logoutButton: {
+
+  // CTA
+  ctaWrap: {
+    paddingHorizontal: 20,
+    marginBottom: 40,
+  },
+  cta: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
+    height: 56,
+    borderRadius: 16,
+    borderWidth: 2,
+  },
+  ctaText: {
+    fontFamily: fontFamily.bold,
+    fontSize: 20,
+    letterSpacing: 1,
+  },
+
+  // Secciones
+  section: {
+    paddingHorizontal: 20,
+    marginBottom: 32,
+  },
+  sectionTitle: {
+    fontFamily: fontFamily.bold,
+    fontSize: 28,
+    letterSpacing: 1,
+    marginBottom: 12,
+  },
+  panel: {
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: 16,
+  },
+
+  // Fila de rutina — densidad compacta
+  fila: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     paddingVertical: 16,
-    marginHorizontal: 20,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+  },
+  filaTitulo: {
+    fontFamily: fontFamily.semibold,
+    fontSize: 17,
+  },
+  filaSub: {
+    fontFamily: fontFamily.regular,
+    fontSize: 14,
+    marginTop: 2,
+  },
+
+  logout: {
+    alignItems: 'center',
+    paddingVertical: 16,
   },
   logoutText: {
     fontFamily: fontFamily.medium,
-    fontSize: 14,
+    fontSize: 15,
   },
 });
 
