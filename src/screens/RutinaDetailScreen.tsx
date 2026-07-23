@@ -13,7 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp } from '@react-navigation/native';
-import { colors, fontFamily, shadows } from '../constants/theme';
+import { colors, fontFamily } from '../constants/theme';
 import { RootStackParamList, DiaRutina, EjercicioEnRutina } from '../types';
 import { Button, Card, Badge, ProgressBar } from '../components/ui';
 import { EjercicioCard } from '../components';
@@ -123,11 +123,14 @@ export const RutinaDetailScreen: React.FC<RutinaDetailScreenProps> = ({
     ]).start();
   }, [headerAnim, diasAnim, diasTranslateY, ejerciciosAnim, ejerciciosTranslateY, buttonAnim, buttonTranslateY]);
 
-  const selectedDia = rutina.dias[selectedDiaIndex];
-  const totalEjercicios = selectedDia?.ejercicios.length || 0;
+  const dias = rutina.dias ?? [];
+  const selectedDia = dias[selectedDiaIndex];
+  const totalEjercicios = selectedDia?.ejercicios?.length || 0;
+  // Un día sin ejercicios no debe poder iniciar un workout vacío (gap auditoría).
+  const puedeEmpezar = totalEjercicios > 0;
 
   const handleStartWorkout = () => {
-    if (!selectedDia) return;
+    if (!selectedDia || !puedeEmpezar) return;
     haptics.medium();
     navigation.navigate('Workout', { rutina, diaId: selectedDia.id });
   };
@@ -140,7 +143,7 @@ export const RutinaDetailScreen: React.FC<RutinaDetailScreenProps> = ({
           style={styles.backButton}
           onPress={() => navigation.goBack()}
         >
-          <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
+          <Ionicons name="arrow-back" size={20} color={colors.textPrimary} />
         </TouchableOpacity>
 
         <View style={styles.headerContent}>
@@ -178,22 +181,27 @@ export const RutinaDetailScreen: React.FC<RutinaDetailScreenProps> = ({
         <Animated.View style={[styles.ejerciciosContainer, { opacity: ejerciciosAnim, transform: [{ translateY: ejerciciosTranslateY }] }]}>
           <View style={styles.ejerciciosHeader}>
             <Text style={styles.ejerciciosTitle}>{selectedDia.nombre}</Text>
-            <Text style={styles.ejerciciosCount}>{totalEjercicios} ejercicios</Text>
+            <Text style={styles.ejerciciosCount}>
+              {totalEjercicios} {totalEjercicios === 1 ? 'ejercicio' : 'ejercicios'}
+            </Text>
           </View>
 
-          <FlashList
-            data={selectedDia.ejercicios}
-            renderItem={({ item, index }) => (
-              <EjercicioCard
-                ejercicio={item}
-                index={index}
-                showDetails={false}
-              />
-            )}
-            contentContainerStyle={styles.ejerciciosList}
-            showsVerticalScrollIndicator={false}
-            ListFooterComponent={<View style={{ height: 120 + insets.bottom }} />}
-          />
+          {puedeEmpezar ? (
+            <FlashList
+              data={selectedDia.ejercicios}
+              renderItem={({ item, index }) => (
+                <EjercicioCard ejercicio={item} index={index} showDetails={false} />
+              )}
+              contentContainerStyle={styles.ejerciciosList}
+              showsVerticalScrollIndicator={false}
+              ListFooterComponent={<View style={{ height: 120 + insets.bottom }} />}
+            />
+          ) : (
+            <View style={styles.diaVacio}>
+              <Ionicons name="calendar-clear-outline" size={40} color={colors.textMuted} />
+              <Text style={styles.diaVacioText}>Este día no tiene ejercicios cargados.</Text>
+            </View>
+          )}
         </Animated.View>
       )}
 
@@ -202,12 +210,13 @@ export const RutinaDetailScreen: React.FC<RutinaDetailScreenProps> = ({
         style={[styles.startButtonContainer, { opacity: buttonAnim, transform: [{ translateY: buttonTranslateY }], paddingBottom: insets.bottom + 16 }]}
       >
         <Button
-          title="Comenzar Entrenamiento"
+          title="Comenzar entrenamiento"
           variant="primary"
           size="lg"
           fullWidth
+          disabled={!puedeEmpezar}
           onPress={handleStartWorkout}
-          leftIcon={<Ionicons name="play" size={24} color={colors.background} />}
+          leftIcon={<Ionicons name="play" size={20} color={colors.background} />}
         />
       </Animated.View>
     </View>
@@ -222,15 +231,14 @@ const styles = StyleSheet.create({
   header: {
     paddingHorizontal: 20,
     paddingBottom: 20,
-    backgroundColor: colors.surface,
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
   },
   backButton: {
     width: 44,
     height: 44,
-    borderRadius: 22,
-    backgroundColor: colors.card,
+    borderRadius: 12,
+    backgroundColor: colors.surface,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.border,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 8,
@@ -315,6 +323,19 @@ const styles = StyleSheet.create({
   ejerciciosList: {
     paddingBottom: 20,
   },
+  diaVacio: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+    paddingBottom: 80,
+  },
+  diaVacioText: {
+    fontFamily: fontFamily.regular,
+    fontSize: 15,
+    color: colors.textSecondary,
+    textAlign: 'center',
+  },
   startButtonContainer: {
     position: 'absolute',
     bottom: 0,
@@ -322,9 +343,8 @@ const styles = StyleSheet.create({
     right: 0,
     padding: 20,
     backgroundColor: colors.background,
-    borderTopWidth: 1,
+    borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: colors.border,
-    ...shadows.lg,
   },
 });
 
