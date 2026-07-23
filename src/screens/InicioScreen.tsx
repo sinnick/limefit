@@ -9,6 +9,7 @@ import {
   Animated,
   Easing,
   AccessibilityInfo,
+  Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -161,6 +162,15 @@ export const InicioScreen: React.FC<InicioScreenProps> = ({ navigation }) => {
     marcarAsistencia({ metodo: 'manual' });
   };
 
+  // El engranaje del header abre el menú de cuenta. Antes no hacía nada y el
+  // logout vivía como texto suelto al fondo del scroll: se unifica acá.
+  const abrirCuenta = () => {
+    Alert.alert(user?.NAME || 'Tu cuenta', undefined, [
+      { text: 'Cerrar sesión', style: 'destructive', onPress: logout },
+      { text: 'Cancelar', style: 'cancel' },
+    ]);
+  };
+
   // Press: hundido inmediato, release con spring (RN no interpola el estilo
   // de `pressed`, así que el rebote lo damos nosotros).
   const alPresionar = () => {
@@ -200,7 +210,7 @@ export const InicioScreen: React.FC<InicioScreenProps> = ({ navigation }) => {
           />
         }
       >
-        <UserHeader />
+        <UserHeader onSettingsPress={abrirCuenta} />
 
         {/* ---- Hero de racha ---- */}
         <Entrada orden={0} activo={!reduceMotion}>
@@ -332,13 +342,6 @@ export const InicioScreen: React.FC<InicioScreenProps> = ({ navigation }) => {
           </View>
         </Entrada>
 
-        <Pressable
-          onPress={logout}
-          accessibilityRole="button"
-          style={({ pressed }) => [styles.logout, { opacity: pressed ? 0.6 : 1 }]}
-        >
-          <Text style={[styles.logoutText, { color: colors.textMuted }]}>Cerrar sesión</Text>
-        </Pressable>
       </ScrollView>
     </View>
   );
@@ -439,14 +442,6 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
 
-  logout: {
-    alignItems: 'center',
-    paddingVertical: 16,
-  },
-  logoutText: {
-    fontFamily: fontFamily.medium,
-    fontSize: 15,
-  },
 });
 
 export default InicioScreen;
