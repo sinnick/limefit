@@ -7,6 +7,7 @@ import {
   LayoutAnimation,
   Platform,
   UIManager,
+  AccessibilityInfo,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../hooks/useTheme';
@@ -56,6 +57,20 @@ interface Celda {
 export const HabitHeatmap: React.FC<HabitHeatmapProps> = ({ fechas }) => {
   const { colors } = useTheme();
   const [expandido, setExpandido] = useState(false);
+  // Respetar "Reducir movimiento" del sistema: sin animación de layout.
+  const [reduceMotion, setReduceMotion] = useState(false);
+
+  React.useEffect(() => {
+    let vivo = true;
+    AccessibilityInfo.isReduceMotionEnabled().then((v) => {
+      if (vivo) setReduceMotion(v);
+    });
+    const sub = AccessibilityInfo.addEventListener('reduceMotionChanged', setReduceMotion);
+    return () => {
+      vivo = false;
+      sub.remove();
+    };
+  }, []);
 
   const { semanas, filaActual, nombreMes, diasDelMes } = useMemo(() => {
     const set = new Set(fechas.map(diaKey));
@@ -104,9 +119,15 @@ export const HabitHeatmap: React.FC<HabitHeatmapProps> = ({ fechas }) => {
   }, [fechas]);
 
   const toggle = () => {
-    LayoutAnimation.configureNext(
-      LayoutAnimation.create(200, LayoutAnimation.Types.easeInEaseOut, LayoutAnimation.Properties.opacity)
-    );
+    if (!reduceMotion) {
+      LayoutAnimation.configureNext(
+        LayoutAnimation.create(
+          200,
+          LayoutAnimation.Types.easeInEaseOut,
+          LayoutAnimation.Properties.opacity
+        )
+      );
+    }
     setExpandido((v) => !v);
   };
 
