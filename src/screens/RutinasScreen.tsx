@@ -1,138 +1,127 @@
 import React, { useEffect, useRef } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  RefreshControl,
-  TouchableOpacity,
-  Animated,
-} from 'react-native';
+import { View, Text, StyleSheet, RefreshControl, Pressable, Animated, Easing } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { colors, fontFamily, shadows } from '../constants/theme';
+import { useTheme } from '../hooks/useTheme';
+import { fontFamily } from '../constants/theme';
 import { RootStackParamList, Rutina } from '../types';
 import { useRutinas } from '../store/rutinasStore';
 import { useRutinasQuery } from '../services/queries';
-import { Card, EmptyState, Loading, Badge } from '../components/ui';
+import { EmptyState, Loading } from '../components/ui';
 import { UserHeader } from '../components';
+
+// ============================================================================
+// RutinasScreen — lista de rutinas asignadas al socio. Alineada al lenguaje de
+// la home (ui-taste): superficies planas con hairline (sin sombras), un grid de
+// iconos 20/16 (sin 18/24 mezclados), Pressable con estado de press.
+// ============================================================================
 
 interface RutinasScreenProps {
   navigation: NativeStackNavigationProp<RootStackParamList, 'Rutinas'>;
 }
 
-interface RutinaCardProps {
-  rutina: Rutina;
-  index: number;
-  onPress: () => void;
-}
+const ICON = 20; // navegación / icono principal
+const ICON_SM = 16; // iconos inline junto a texto secundario
 
-const RutinaCard: React.FC<RutinaCardProps> = ({ rutina, index, onPress }) => {
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const translateX = useRef(new Animated.Value(50)).current;
+const RutinaCard: React.FC<{ rutina: Rutina; index: number; onPress: () => void }> = ({
+  rutina,
+  index,
+  onPress,
+}) => {
+  const { colors } = useTheme();
+  const v = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    Animated.parallel([
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 300,
-        delay: index * 100,
-        useNativeDriver: true,
-      }),
-      Animated.spring(translateX, {
-        toValue: 0,
-        delay: index * 100,
-        useNativeDriver: true,
-      }),
-    ]).start();
-  }, [index, fadeAnim, translateX]);
+    Animated.timing(v, {
+      toValue: 1,
+      duration: 260,
+      delay: index * 50,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
+  }, [index, v]);
 
   const dias = rutina.dias ?? [];
-  const totalEjercicios = dias.reduce(
-    (acc, dia) => acc + (dia.ejercicios?.length ?? 0),
-    0
-  );
+  const totalEjercicios = dias.reduce((acc, d) => acc + (d.ejercicios?.length ?? 0), 0);
 
   return (
-    <Animated.View style={{ opacity: fadeAnim, transform: [{ translateX }] }}>
-      <TouchableOpacity onPress={onPress} activeOpacity={0.8}>
-        <Card variant="elevated" padding="lg" style={styles.rutinaCard}>
-          <View style={styles.cardHeader}>
-            <View style={styles.cardIconContainer}>
-              <Ionicons name="barbell" size={24} color={colors.lime} />
-            </View>
-            <View style={styles.cardInfo}>
-              <Text style={styles.rutinaName}>{rutina.nombre}</Text>
-              {rutina.descripcion && (
-                <Text style={styles.rutinaDescription} numberOfLines={1}>
-                  {rutina.descripcion}
-                </Text>
-              )}
-            </View>
-            <Ionicons name="chevron-forward" size={24} color={colors.textMuted} />
+    <Animated.View
+      style={{
+        opacity: v,
+        transform: [{ translateY: v.interpolate({ inputRange: [0, 1], outputRange: [8, 0] }) }],
+      }}
+    >
+      <Pressable
+        onPress={onPress}
+        accessibilityRole="button"
+        accessibilityLabel={`Abrir rutina ${rutina.nombre}`}
+        style={({ pressed }) => [
+          styles.card,
+          {
+            backgroundColor: pressed ? colors.surface : colors.card,
+            borderColor: colors.border,
+          },
+        ]}
+      >
+        <View style={styles.cardHeader}>
+          <View style={[styles.cardIcon, { backgroundColor: `${colors.accent}20` }]}>
+            <Ionicons name="barbell" size={ICON} color={colors.accent} />
           </View>
-
-          <View style={styles.cardStats}>
-            <View style={styles.statItem}>
-              <Ionicons name="calendar-outline" size={18} color={colors.lime} />
-              <Text style={styles.statText}>{dias.length} días</Text>
-            </View>
-            <View style={styles.statItem}>
-              <Ionicons name="fitness-outline" size={18} color={colors.lime} />
-              <Text style={styles.statText}>{totalEjercicios} ejercicios</Text>
-            </View>
-            {rutina.tiempoEstimado && (
-              <View style={styles.statItem}>
-                <Ionicons name="time-outline" size={18} color={colors.lime} />
-                <Text style={styles.statText}>{rutina.tiempoEstimado} min</Text>
-              </View>
-            )}
+          <View style={styles.cardInfo}>
+            <Text style={[styles.rutinaName, { color: colors.textPrimary }]}>{rutina.nombre}</Text>
+            {rutina.descripcion ? (
+              <Text style={[styles.rutinaDesc, { color: colors.textSecondary }]} numberOfLines={1}>
+                {rutina.descripcion}
+              </Text>
+            ) : null}
           </View>
+          <Ionicons name="chevron-forward" size={ICON} color={colors.textMuted} />
+        </View>
 
-          {dias.length > 0 && (
-            <View style={styles.diasPreview}>
-              {dias.slice(0, 3).map((dia, idx) => (
-                <Badge
-                  key={dia.id || idx}
-                  text={dia.nombre}
-                  variant="lime"
-                  size="sm"
-                />
-              ))}
-              {dias.length > 3 && (
-                <Badge text={`+${dias.length - 3}`} variant="default" size="sm" />
-              )}
+        <View style={styles.cardStats}>
+          <View style={styles.statItem}>
+            <Ionicons name="calendar-outline" size={ICON_SM} color={colors.textMuted} />
+            <Text style={[styles.statText, { color: colors.textSecondary }]}>
+              {dias.length} {dias.length === 1 ? 'día' : 'días'}
+            </Text>
+          </View>
+          <View style={styles.statItem}>
+            <Ionicons name="fitness-outline" size={ICON_SM} color={colors.textMuted} />
+            <Text style={[styles.statText, { color: colors.textSecondary }]}>
+              {totalEjercicios} {totalEjercicios === 1 ? 'ejercicio' : 'ejercicios'}
+            </Text>
+          </View>
+          {rutina.tiempoEstimado ? (
+            <View style={styles.statItem}>
+              <Ionicons name="time-outline" size={ICON_SM} color={colors.textMuted} />
+              <Text style={[styles.statText, { color: colors.textSecondary }]}>
+                {rutina.tiempoEstimado} min
+              </Text>
             </View>
-          )}
-        </Card>
-      </TouchableOpacity>
+          ) : null}
+        </View>
+      </Pressable>
     </Animated.View>
   );
 };
 
 export const RutinasScreen: React.FC<RutinasScreenProps> = ({ navigation }) => {
-  // El store guarda las rutinas ASIGNADAS al socio (CONTRACT b.2). useRutinasQuery
-  // las trae con rutinasApi.getMisRutinasAsignadas(dni) y las vuelca al store.
+  const { colors } = useTheme();
   const rutinas = useRutinas();
   const insets = useSafeAreaInsets();
   const { isLoading, isError, refetch, isRefetching } = useRutinasQuery();
 
-  const handleRutinaPress = (rutina: Rutina) => {
-    navigation.navigate('Rutina', { rutina });
-  };
-
-  // Carga: solo cuando la query está pidiendo y todavía no hay nada cacheado en
-  // MMKV (evita mostrar rutinas del socio anterior mientras llega la respuesta).
   if (isLoading && rutinas.length === 0) {
     return <Loading fullScreen message="Cargando rutinas..." />;
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <UserHeader
-        title="Mis Rutinas"
-        subtitle={`${rutinas.length} rutinas asignadas`}
+        title="Mis rutinas"
+        subtitle={`${rutinas.length} ${rutinas.length === 1 ? 'rutina asignada' : 'rutinas asignadas'}`}
         showSettings={false}
         onBack={() => navigation.goBack()}
       />
@@ -148,27 +137,23 @@ export const RutinasScreen: React.FC<RutinasScreenProps> = ({ navigation }) => {
       ) : rutinas.length === 0 ? (
         <EmptyState
           icon="barbell-outline"
-          title="No tienes rutinas"
-          description="Aún no se te ha asignado ninguna rutina. Contacta al gimnasio para que te asignen una."
+          title="Todavía no tenés rutinas"
+          description="Cuando tu entrenador te asigne una, la vas a ver acá."
         />
       ) : (
         <FlashList
           data={rutinas}
           renderItem={({ item, index }) => (
-            <RutinaCard
-              rutina={item}
-              index={index}
-              onPress={() => handleRutinaPress(item)}
-            />
+            <RutinaCard rutina={item} index={index} onPress={() => navigation.navigate('Rutina', { rutina: item })} />
           )}
-          contentContainerStyle={[styles.listContent, { paddingBottom: insets.bottom + 16 }]}
+          contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: insets.bottom + 16 }}
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl
               refreshing={isRefetching}
               onRefresh={refetch}
-              tintColor={colors.lime}
-              colors={[colors.lime]}
+              tintColor={colors.accent}
+              colors={[colors.accent]}
             />
           }
         />
@@ -180,46 +165,43 @@ export const RutinasScreen: React.FC<RutinasScreenProps> = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
   },
-  listContent: {
-    paddingHorizontal: 20,
-  },
-  rutinaCard: {
-    marginBottom: 16,
+  card: {
+    borderRadius: 16,
+    borderWidth: StyleSheet.hairlineWidth,
+    padding: 16,
+    marginBottom: 12,
   },
   cardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 16,
   },
-  cardIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 16,
-    backgroundColor: `${colors.lime}20`,
+  cardIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 16,
+    marginRight: 12,
   },
   cardInfo: {
     flex: 1,
+    paddingRight: 12,
   },
   rutinaName: {
     fontFamily: fontFamily.bold,
     fontSize: 18,
-    color: colors.textPrimary,
-    marginBottom: 2,
+    letterSpacing: 0.5,
   },
-  rutinaDescription: {
+  rutinaDesc: {
     fontFamily: fontFamily.regular,
     fontSize: 14,
-    color: colors.textSecondary,
+    marginTop: 2,
   },
   cardStats: {
     flexDirection: 'row',
     gap: 16,
-    marginBottom: 16,
+    marginTop: 16,
   },
   statItem: {
     flexDirection: 'row',
@@ -229,12 +211,6 @@ const styles = StyleSheet.create({
   statText: {
     fontFamily: fontFamily.medium,
     fontSize: 14,
-    color: colors.textSecondary,
-  },
-  diasPreview: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
   },
 });
 
