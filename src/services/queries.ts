@@ -28,17 +28,22 @@ export const useLogin = () => {
   const setLoading = useUserStore((state) => state.setLoading);
 
   return useMutation({
-    mutationFn: (dni: string) => {
+    mutationFn: async (dni: string) => {
       setLoading(true);
-      return authApi.login(dni);
+      // El backend responde HTTP 200 con user: null si el DNI no existe
+      // (CONTRACT b.1). Eso NO es un onSuccess desde la UI: hay que convertirlo
+      // en error para que el call site muestre feedback. Lo marcamos con `code`
+      // para distinguirlo de un fallo de red (axios sin `response`).
+      const user = await authApi.login(dni);
+      if (!user) {
+        throw Object.assign(new Error('DNI no encontrado'), { code: 'DNI_NOT_FOUND' });
+      }
+      return user;
     },
     onSuccess: (user) => {
-      // El backend puede devolver user: null si el DNI no existe (CONTRACT b.1).
-      if (user) {
-        setUser(user);
-        // Drena lo acumulado offline al loguear (CONTRACT-fase5A §2.4).
-        void useSyncStore.getState().flush();
-      } else setLoading(false);
+      setUser(user);
+      // Drena lo acumulado offline al loguear (CONTRACT-fase5A §2.4).
+      void useSyncStore.getState().flush();
     },
     onError: () => {
       setLoading(false);

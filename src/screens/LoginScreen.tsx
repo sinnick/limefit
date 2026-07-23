@@ -78,7 +78,15 @@ export const LoginScreen: React.FC = () => {
 
     login(dni.trim(), {
       onError: (err: any) => {
-        setError(err.response?.data?.message || 'Error al iniciar sesión. Verifica tu DNI.');
+        if (err?.code === 'DNI_NOT_FOUND') {
+          // DNI válido en forma, pero no existe en este gym.
+          setError('No encontramos ese DNI. Revisá el número o pedí en el gym que te den de alta.');
+        } else if (!err?.response) {
+          // axios sin `response` = no llegó al server (sin internet, timeout).
+          setError('Sin conexión. Revisá tu internet e intentá de nuevo.');
+        } else {
+          setError(err.response?.data?.message || 'No pudimos iniciar sesión. Intentá de nuevo.');
+        }
       },
     });
   };
@@ -143,6 +151,8 @@ export const LoginScreen: React.FC = () => {
               error={error}
               autoCapitalize="none"
               maxLength={12}
+              returnKeyType="go"
+              onSubmitEditing={handleLogin}
               containerStyle={{ marginBottom: 24 }}
             />
 

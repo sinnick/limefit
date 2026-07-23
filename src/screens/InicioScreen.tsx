@@ -84,7 +84,7 @@ export const InicioScreen: React.FC<InicioScreenProps> = ({ navigation }) => {
 
   const historial = useAsistenciaHistorial();
   const marcarAsistencia = useAsistenciaStore((s) => s.marcarAsistencia);
-  const { isLoading, refetch, isRefetching } = useRutinasQuery();
+  const { isLoading, isError, refetch, isRefetching } = useRutinasQuery();
 
   const [reduceMotion, setReduceMotion] = useState(false);
   useEffect(() => {
@@ -286,31 +286,49 @@ export const InicioScreen: React.FC<InicioScreenProps> = ({ navigation }) => {
             <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
               Entrenamiento
             </Text>
-            <Pressable
-              onPress={() => navigation.navigate('Rutinas')}
-              accessibilityRole="button"
-              accessibilityLabel="Ver mis rutinas"
-              style={({ pressed }) => [
-                styles.fila,
-                {
-                  borderTopColor: colors.border,
-                  borderBottomColor: colors.border,
-                  backgroundColor: pressed ? colors.surface : 'transparent',
-                },
-              ]}
-            >
-              <View>
-                <Text style={[styles.filaTitulo, { color: colors.textPrimary }]}>
-                  Mis rutinas
-                </Text>
-                <Text style={[styles.filaSub, { color: colors.textSecondary }]}>
-                  {rutinas.length === 0
-                    ? 'Todavía no tenés rutinas asignadas'
-                    : `${rutinas.length} ${rutinas.length === 1 ? 'rutina asignada' : 'rutinas asignadas'}`}
-                </Text>
-              </View>
-              <Ionicons name="chevron-forward" size={ICON} color={colors.textMuted} />
-            </Pressable>
+            {(() => {
+              // Un fallo de red sin datos cacheados NO es "no tenés rutinas":
+              // esa mentira deja al socio sin saber que puede reintentar.
+              const cargaFallida = isError && rutinas.length === 0;
+              return (
+                <Pressable
+                  onPress={() => (cargaFallida ? refetch() : navigation.navigate('Rutinas'))}
+                  accessibilityRole="button"
+                  accessibilityLabel={cargaFallida ? 'Reintentar cargar rutinas' : 'Ver mis rutinas'}
+                  style={({ pressed }) => [
+                    styles.fila,
+                    {
+                      borderTopColor: colors.border,
+                      borderBottomColor: colors.border,
+                      backgroundColor: pressed ? colors.surface : 'transparent',
+                    },
+                  ]}
+                >
+                  <View style={styles.filaTexto}>
+                    <Text style={[styles.filaTitulo, { color: colors.textPrimary }]}>
+                      Mis rutinas
+                    </Text>
+                    <Text
+                      style={[
+                        styles.filaSub,
+                        { color: cargaFallida ? colors.accent : colors.textSecondary },
+                      ]}
+                    >
+                      {cargaFallida
+                        ? 'No pudimos cargarlas · tocá para reintentar'
+                        : rutinas.length === 0
+                          ? 'Todavía no tenés rutinas asignadas'
+                          : `${rutinas.length} ${rutinas.length === 1 ? 'rutina asignada' : 'rutinas asignadas'}`}
+                    </Text>
+                  </View>
+                  <Ionicons
+                    name={cargaFallida ? 'refresh' : 'chevron-forward'}
+                    size={ICON}
+                    color={cargaFallida ? colors.accent : colors.textMuted}
+                  />
+                </Pressable>
+              );
+            })()}
           </View>
         </Entrada>
 
@@ -406,6 +424,10 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  filaTexto: {
+    flex: 1,
+    paddingRight: 12,
   },
   filaTitulo: {
     fontFamily: fontFamily.semibold,
