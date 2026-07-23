@@ -201,10 +201,13 @@ export const InicioScreen: React.FC<InicioScreenProps> = ({ navigation }) => {
     }).start();
   };
   const alSoltar = () => {
+    // Critically damped (Apple §4): soltar el botón es un reposition sin
+    // momentum, no un flick — no debe rebotar. El delight del check-in vive en
+    // los pops de la celda y la racha, no en el botón.
     Animated.spring(escalaCta, {
       toValue: 1,
       speed: 30,
-      bounciness: 8,
+      bounciness: 0,
       useNativeDriver: true,
     }).start();
   };

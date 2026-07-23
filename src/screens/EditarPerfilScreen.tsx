@@ -4,6 +4,7 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
+  Pressable,
   ScrollView,
   Image,
   KeyboardAvoidingView,
@@ -298,12 +299,12 @@ export const EditarPerfilScreen: React.FC<EditarPerfilScreenProps> = ({ navigati
       >
         {/* Avatar tocable → tomar/elegir foto */}
         <View style={styles.avatarSection}>
-          <TouchableOpacity
+          <Pressable
             onPress={abrirSelectorFoto}
-            activeOpacity={0.85}
             disabled={subiendoFoto}
             accessibilityRole="button"
             accessibilityLabel="Cambiar foto de perfil"
+            style={({ pressed }) => ({ transform: [{ scale: pressed ? 0.97 : 1 }] })}
           >
             <View style={styles.avatarContainer}>
               {foto.trim() ? (
@@ -316,7 +317,7 @@ export const EditarPerfilScreen: React.FC<EditarPerfilScreenProps> = ({ navigati
                 <Ionicons name="camera" size={16} color={colors.white} />
               </View>
             </View>
-          </TouchableOpacity>
+          </Pressable>
           <TouchableOpacity onPress={abrirSelectorFoto} disabled={subiendoFoto}>
             <Text style={[styles.avatarHint, { color: colors.lime }]}>
               {subiendoFoto ? 'Cargando…' : foto ? 'Cambiar foto' : 'Agregar foto'}

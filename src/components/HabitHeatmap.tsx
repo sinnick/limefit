@@ -152,13 +152,22 @@ export const HabitHeatmap: React.FC<HabitHeatmapProps> = ({ fechas }) => {
 
   const animarLayout = () => {
     if (reduceMotion) return;
-    LayoutAnimation.configureNext(
-      LayoutAnimation.create(
-        220,
-        LayoutAnimation.Types.easeInEaseOut,
-        LayoutAnimation.Properties.opacity
-      )
-    );
+    // Spring en vez de curva fija (Apple §4: springs para lo que se toca).
+    // El expandir/colapsar es como abrir un drawer → damping 0.8 (leve settle
+    // orgánico, el valor que Apple usa para drawers/sheets). El fade de las
+    // filas que entran/salen se mantiene en opacity.
+    LayoutAnimation.configureNext({
+      duration: 300,
+      update: { type: LayoutAnimation.Types.spring, springDamping: 0.8 },
+      create: {
+        type: LayoutAnimation.Types.easeInEaseOut,
+        property: LayoutAnimation.Properties.opacity,
+      },
+      delete: {
+        type: LayoutAnimation.Types.easeInEaseOut,
+        property: LayoutAnimation.Properties.opacity,
+      },
+    });
   };
 
   const toggle = () => {
