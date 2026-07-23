@@ -85,6 +85,7 @@ export const InicioScreen: React.FC<InicioScreenProps> = ({ navigation }) => {
 
   const historial = useAsistenciaHistorial();
   const marcarAsistencia = useAsistenciaStore((s) => s.marcarAsistencia);
+  const desmarcarAsistencia = useAsistenciaStore((s) => s.desmarcarAsistencia);
   const { isLoading, isError, refetch, isRefetching } = useRutinasQuery();
 
   const [reduceMotion, setReduceMotion] = useState(false);
@@ -155,8 +156,24 @@ export const InicioScreen: React.FC<InicioScreenProps> = ({ navigation }) => {
     yaHoyPrevio.current = yaHoy;
   }, [yaHoy, reduceMotion, fadeCta]);
 
-  const handleMarcar = () => {
-    if (yaHoy) return;
+  // El CTA marca si falta, o abre el deshacer si ya está listo. El estado
+  // cumplido sigue siendo tocable a propósito: es la única vía para revertir un
+  // toque accidental (marcar es irreversible sin esto).
+  const handleCta = () => {
+    if (yaHoy) {
+      Alert.alert('Registrado hoy', '¿Querés deshacer el registro de hoy?', [
+        {
+          text: 'Deshacer',
+          style: 'destructive',
+          onPress: () => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+            desmarcarAsistencia();
+          },
+        },
+        { text: 'Cancelar', style: 'cancel' },
+      ]);
+      return;
+    }
     // Háptica primero: la confirmación táctil debe coincidir con el toque.
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
     marcarAsistencia({ metodo: 'manual' });
@@ -244,14 +261,14 @@ export const InicioScreen: React.FC<InicioScreenProps> = ({ navigation }) => {
           <View style={styles.ctaWrap}>
             <Animated.View style={{ transform: [{ scale: escalaCta }] }}>
               <Pressable
-                onPress={handleMarcar}
-                onPressIn={listo ? undefined : alPresionar}
-                onPressOut={listo ? undefined : alSoltar}
-                disabled={listo}
+                onPress={handleCta}
+                onPressIn={alPresionar}
+                onPressOut={alSoltar}
                 accessibilityRole="button"
                 accessibilityLabel={
-                  listo ? 'Ya registraste hoy' : 'Marcar que fuiste al gym hoy'
+                  listo ? 'Registrado hoy. Tocá para deshacer.' : 'Marcar que fuiste al gym hoy'
                 }
+                accessibilityHint={listo ? 'Abre la opción de deshacer el registro' : undefined}
                 style={[
                   styles.cta,
                   {

@@ -21,7 +21,7 @@ import { Record, WorkoutCompletado, MetricaCorporal, Asistencia } from '../types
 // (recordsApi.subirRecords / workoutsApi.subirWorkouts) — un request por tipo.
 // ============================================================================
 
-export type SyncEntityType = 'record' | 'workout' | 'metric' | 'asistencia';
+export type SyncEntityType = 'record' | 'workout' | 'metric' | 'asistencia' | 'asistencia-baja';
 export type SyncStatus = 'pending' | 'inFlight' | 'failed';
 
 export interface SyncQueueItem {
@@ -46,6 +46,13 @@ interface SyncState {
   enqueueWorkout: (w: WorkoutCompletado) => void;
   enqueueMetric: (m: MetricaCorporal) => void;
   enqueueAsistencia: (a: Asistencia) => void;
+  // Baja de un check-in (deshacer). Encola una operación de baja que el flush
+  // sube vía asistenciaApi.unCheckIn (idempotente en el backend).
+  enqueueAsistenciaBaja: (a: Asistencia) => void;
+  // Cancela un check-in AÚN pending/failed en la cola (no subido). Devuelve true
+  // si lo encontró y lo quitó: en ese caso no hace falta pedir la baja al backend
+  // (nunca llegó). Evita además un race checkin↔baja del mismo día.
+  cancelAsistenciaPendiente: (clientId: string) => boolean;
   flush: () => Promise<void>;
   markSynced: (clientIds: string[]) => void; // elimina de la cola
   markFailed: (clientId: string, error: string) => void;
@@ -185,6 +192,48 @@ export const useSyncStore = create<SyncState>()(
         void get().flush();
       },
 
+      // Encolar una BAJA de check-in (deshacer). clientId propio (id de la baja,
+      // distinto del check-in) para no colisionar en la cola. Sube vía unCheckIn.
+      enqueueAsistenciaBaja: (asistencia) => {
+        const dni = asistencia.dni || currentDni();
+        const clientId = `baja-${asistencia.clientId ?? asistencia.id}`;
+        const payload: Asistencia = { ...asistencia, dni };
+
+        set((state) => {
+          if (state.queue.some((q) => q.clientId === clientId)) return state;
+          const item: SyncQueueItem = {
+            clientId,
+            type: 'asistencia-baja',
+            payload,
+            dni,
+            status: 'pending',
+            attempts: 0,
+            createdAt: new Date().toISOString(),
+          };
+          return { queue: [...state.queue, item] };
+        });
+
+        void get().flush();
+      },
+
+      // Quita de la cola un check-in de asistencia AÚN no subido (pending/failed).
+      // Si estaba inFlight NO se toca (ya salió; se maneja con una baja). Devuelve
+      // si lo canceló, para que el store decida si pedir la baja al backend.
+      cancelAsistenciaPendiente: (clientId) => {
+        let cancelado = false;
+        set((state) => {
+          const item = state.queue.find(
+            (q) => q.clientId === clientId && q.type === 'asistencia'
+          );
+          if (item && item.status !== 'inFlight') {
+            cancelado = true;
+            return { queue: state.queue.filter((q) => q.clientId !== clientId) };
+          }
+          return state;
+        });
+        return cancelado;
+      },
+
       // Elimina los items ya sincronizados de la cola (CONTRACT c.5). La verdad ya
       // vive en el backend y en el historial/records local.
       markSynced: (clientIds) =>
@@ -235,11 +284,16 @@ export const useSyncStore = create<SyncState>()(
           (q): q is SyncQueueItem & { payload: Asistencia } =>
             q.type === 'asistencia' && !!q.dni
         );
+        const asistenciasBaja = due.filter(
+          (q): q is SyncQueueItem & { payload: Asistencia } =>
+            q.type === 'asistencia-baja' && !!q.dni
+        );
         if (
           records.length === 0 &&
           workouts.length === 0 &&
           metrics.length === 0 &&
-          asistencias.length === 0
+          asistencias.length === 0 &&
+          asistenciasBaja.length === 0
         )
           return;
 
@@ -251,7 +305,9 @@ export const useSyncStore = create<SyncState>()(
 
         // Marcar lo que va a salir como inFlight (CONTRACT c.5).
         const inFlightIds = new Set(
-          [...records, ...workouts, ...metrics, ...asistencias].map((q) => q.clientId)
+          [...records, ...workouts, ...metrics, ...asistencias, ...asistenciasBaja].map(
+            (q) => q.clientId
+          )
         );
         set((s) => ({
           queue: s.queue.map((q) =>
@@ -332,6 +388,25 @@ export const useSyncStore = create<SyncState>()(
                   clientId: r.clientId,
                   ok: r.ok,
                   created: r.created,
+                  error: r.error,
+                })
+              );
+            });
+          }
+
+          // Bajas de asistencia (deshacer). Mismo criterio por-item que el
+          // check-in: una request por baja vía unCheckIn (idempotente). El
+          // clientId acá es el de la baja ('baja-...').
+          const bajasByDni = groupByDni(asistenciasBaja);
+          for (const [dni, items] of bajasByDni) {
+            await procesarGrupo(dni, items, async () => {
+              const results = await Promise.all(
+                items.map((q) => asistenciaApi.unCheckIn(dni, q.payload as Asistencia))
+              );
+              return results.map(
+                (r): SyncBatchResult => ({
+                  clientId: r.clientId,
+                  ok: r.ok,
                   error: r.error,
                 })
               );
@@ -456,5 +531,8 @@ export const syncQueue = {
   enqueueWorkout: (w: WorkoutCompletado) => useSyncStore.getState().enqueueWorkout(w),
   enqueueMetric: (m: MetricaCorporal) => useSyncStore.getState().enqueueMetric(m),
   enqueueAsistencia: (a: Asistencia) => useSyncStore.getState().enqueueAsistencia(a),
+  enqueueAsistenciaBaja: (a: Asistencia) => useSyncStore.getState().enqueueAsistenciaBaja(a),
+  cancelAsistenciaPendiente: (clientId: string) =>
+    useSyncStore.getState().cancelAsistenciaPendiente(clientId),
   flush: () => useSyncStore.getState().flush(),
 };

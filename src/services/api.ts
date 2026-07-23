@@ -603,6 +603,23 @@ export const asistenciaApi = {
     }
   },
 
+  // POST /asistencia/uncheckin — baja del check-in de un día (deshacer). Devuelve
+  // un CheckinResult homogéneo con checkIn para que la cola de sync lo procese
+  // igual (alineado por clientId). `deleted:false` (no había nada ese día) sigue
+  // siendo ok: la baja es idempotente.
+  unCheckIn: async (dni: string, asistencia: Asistencia): Promise<CheckinResult> => {
+    const clientId = asistencia.clientId ?? asistencia.id;
+    try {
+      const response = await api.post<{ status: string; deleted: boolean }>(
+        '/asistencia/uncheckin',
+        { dni, fecha: asistencia.horaCheckin ?? asistencia.fecha }
+      );
+      return { clientId, ok: response.data.status === 'ok' };
+    } catch (err: any) {
+      return { clientId, ok: false, error: err?.message ?? 'error de red' };
+    }
+  },
+
   // POST /asistencia/list → Asistencia[] (lee {asistencias}). Lectura por DNI.
   getHistorial: async (
     dni: string,

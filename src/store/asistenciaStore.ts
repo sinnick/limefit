@@ -24,6 +24,9 @@ interface AsistenciaState {
     dni?: string;
     fecha?: string;
   }) => Asistencia;
+  // Deshacer el check-in de un día (por defecto hoy). Quita local + sincroniza la
+  // baja. Devuelve true si había algo que deshacer.
+  desmarcarAsistencia: (input?: { dni?: string; fecha?: string }) => boolean;
   // ¿Ya hay un check-in para HOY (mismo día local)? Evita escaneos repetidos.
   yaRegistradoHoy: () => boolean;
 }
@@ -100,6 +103,38 @@ export const useAsistenciaStore = create<AsistenciaState>()(
         syncQueue.enqueueAsistencia(nueva);
 
         return nueva;
+      },
+
+      // Deshacer el check-in de un día. Offline-first y sin races:
+      //   1. Quita la asistencia del historial local (verdad local).
+      //   2. Intenta CANCELAR el check-in aún pendiente en la cola: si nunca se
+      //      subió, alcanza con eso (no hay nada que borrar en el backend).
+      //   3. Si el check-in ya se había subido (o ya no estaba pendiente), encola
+      //      una BAJA para que el backend lo borre (unCheckIn, idempotente).
+      desmarcarAsistencia: (input) => {
+        const dni = input?.dni || currentDni();
+        const clave = claveDia(input?.fecha || new Date().toISOString());
+
+        const asistencia = get().historial.find(
+          (a) => a.dni === dni && claveDia(a.fecha) === clave
+        );
+        if (!asistencia) return false;
+
+        // 1. Baja local.
+        set((state) => ({
+          historial: state.historial.filter(
+            (a) => (a.clientId ?? a.id) !== (asistencia.clientId ?? asistencia.id)
+          ),
+        }));
+
+        // 2 y 3. Cancelar el pendiente; si ya se había subido, pedir la baja.
+        const clientId = asistencia.clientId ?? asistencia.id;
+        const eraPendiente = syncQueue.cancelAsistenciaPendiente(clientId);
+        if (!eraPendiente) {
+          syncQueue.enqueueAsistenciaBaja(asistencia);
+        }
+
+        return true;
       },
 
       yaRegistradoHoy: () => {
