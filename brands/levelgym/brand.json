@@ -11,16 +11,16 @@
     "bundleIdentifier": "com.sinnick007.levelgym",
     "androidPackage": "com.sinnick007.levelgym",
     "easProjectId": "PENDING_EAS_INIT",
-    "splashBackgroundColor": "#0A0A0A"
+    "splashBackgroundColor": "#141414"
   },
   "palette": {
     "accent": "#DA100C",
     "accentDark": "#A60D0A",
     "accentLight": "#DD183B",
-    "background": "#0A0A0A",
-    "surface": "#111111",
-    "surfaceLight": "#1A1A1A",
-    "card": "#111111",
+    "background": "#141414",
+    "surface": "#1C1C1C",
+    "surfaceLight": "#262626",
+    "card": "#1C1C1C",
     "textPrimary": "#FFFFFF",
     "textSecondary": "#B3B3B3",
     "textMuted": "#888888",
@@ -28,7 +28,7 @@
     "error": "#EF4444",
     "warning": "#F59E0B",
     "info": "#3B82F6",
-    "border": "#222222"
+    "border": "#2E2E2E"
   },
   "fontFamily": {
     "regular": "Rajdhani",
