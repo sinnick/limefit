@@ -215,11 +215,11 @@ export const HabitHeatmap: React.FC<HabitHeatmapProps> = ({ fechas }) => {
           key={i}
           style={[
             styles.celda,
-            {
-              backgroundColor: colorFondo(c),
-              borderColor: colorBorde(c),
-              transform: c.esHoy ? [{ scale: popHoy }] : undefined,
-            },
+            { backgroundColor: colorFondo(c), borderColor: colorBorde(c) },
+            // OJO: nunca `transform: undefined`. En los meses sin "hoy" ninguna
+            // celda lleva transform y RN revienta en processTransform
+            // ("Cannot read property 'forEach' of null"). Se omite la key.
+            c.esHoy ? { transform: [{ scale: popHoy }] } : null,
           ]}
         >
           {c.dia !== null && (
