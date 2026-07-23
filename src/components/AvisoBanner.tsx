@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { View, Text, StyleSheet, Animated, Easing, AccessibilityInfo } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../hooks/useTheme';
 import { fontFamily } from '../constants/theme';
@@ -21,12 +21,42 @@ export const AvisoBanner: React.FC<{ aviso: AvisoServicio }> = ({ aviso }) => {
   const { colors } = useTheme();
   const importante = aviso.nivel === 'importante';
 
+  // Entrada suave: el aviso llega async (query) y sin esto empujaría el hero de
+  // golpe. Fade + leve descenso, ~250ms ease-out. Reduce-motion → solo opacity.
+  const v = useRef(new Animated.Value(0)).current;
+  const [reduceMotion, setReduceMotion] = useState(false);
+  useEffect(() => {
+    let vivo = true;
+    AccessibilityInfo.isReduceMotionEnabled().then((r) => vivo && setReduceMotion(r));
+    return () => {
+      vivo = false;
+    };
+  }, []);
+  useEffect(() => {
+    Animated.timing(v, {
+      toValue: 1,
+      duration: 250,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
+  }, [v, aviso.id]);
+
   const acento = importante ? colors.accent : colors.textSecondary;
   const fondo = importante ? `${colors.accent}14` : colors.surface;
   const borde = importante ? colors.accent : colors.border;
 
   return (
-    <View style={styles.wrap}>
+    <Animated.View
+      style={[
+        styles.wrap,
+        {
+          opacity: v,
+          transform: reduceMotion
+            ? undefined
+            : [{ translateY: v.interpolate({ inputRange: [0, 1], outputRange: [-8, 0] }) }],
+        },
+      ]}
+    >
       <View
         style={[styles.banner, { backgroundColor: fondo, borderColor: borde }]}
         accessibilityRole="alert"
@@ -43,7 +73,7 @@ export const AvisoBanner: React.FC<{ aviso: AvisoServicio }> = ({ aviso }) => {
           <Text style={[styles.cuerpo, { color: colors.textSecondary }]}>{aviso.cuerpo}</Text>
         </View>
       </View>
-    </View>
+    </Animated.View>
   );
 };
 
