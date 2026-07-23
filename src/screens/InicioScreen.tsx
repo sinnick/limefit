@@ -19,11 +19,11 @@ import { useTheme } from '../hooks/useTheme';
 import { fontFamily } from '../constants/theme';
 import { RootStackParamList } from '../types';
 import { useUser, useUserStore } from '../store/userStore';
-import { useRutinasQuery } from '../services/queries';
+import { useRutinasQuery, useAvisoBannerQuery } from '../services/queries';
 import { useRutinas } from '../store/rutinasStore';
 import { useAsistenciaStore, useAsistenciaHistorial } from '../store/asistenciaStore';
 import { calcularRachaAsistencia, diaKey } from '../utils/asistenciaStats';
-import { Loading, HabitHeatmap, UserHeader, SyncStatusBadge } from '../components';
+import { Loading, HabitHeatmap, UserHeader, SyncStatusBadge, AvisoBanner } from '../components';
 
 // ============================================================================
 // InicioScreen — home simple: marcar el día, ver la constancia, ir a la rutina.
@@ -87,6 +87,7 @@ export const InicioScreen: React.FC<InicioScreenProps> = ({ navigation }) => {
   const marcarAsistencia = useAsistenciaStore((s) => s.marcarAsistencia);
   const desmarcarAsistencia = useAsistenciaStore((s) => s.desmarcarAsistencia);
   const { isLoading, isError, refetch, isRefetching } = useRutinasQuery();
+  const { data: aviso } = useAvisoBannerQuery();
 
   const [reduceMotion, setReduceMotion] = useState(false);
   useEffect(() => {
@@ -228,6 +229,9 @@ export const InicioScreen: React.FC<InicioScreenProps> = ({ navigation }) => {
         }
       >
         <UserHeader onSettingsPress={abrirCuenta} />
+
+        {/* ---- Aviso de servicio del gym (si hay uno vigente) ---- */}
+        {aviso ? <AvisoBanner aviso={aviso} /> : null}
 
         {/* ---- Hero de racha ---- */}
         <Entrada orden={0} activo={!reduceMotion}>

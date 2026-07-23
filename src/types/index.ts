@@ -391,8 +391,19 @@ export interface Anuncio {
   id: string;                // <- _id
   titulo: string;            // <- TITULO
   cuerpo: string;            // <- CUERPO
-  fechaPublicacion: string;  // <- FECHA_PUBLICACION (ISO)
+  fechaPublicacion: string;  // <- FECHA_PUBLICACion (ISO)
   audiencia: string;         // <- AUDIENCIA
+}
+
+// Banner de aviso de servicio en la home (ej. "Sede cerrada hoy"). Es el aviso
+// destacado vigente devuelto por /anuncios/banner (o null si no hay).
+export type NivelAviso = 'info' | 'importante';
+export interface AvisoServicio {
+  id: string;
+  titulo: string;            // <- TITULO
+  cuerpo: string;            // <- CUERPO
+  nivel: NivelAviso;         // <- NIVEL (color del banner)
+  fechaVencimiento?: string; // <- FECHA_VENCIMIENTO (ISO)
 }
 
 // --- Fase 5.4a Progresión de cargas (heurística determinista) -----------

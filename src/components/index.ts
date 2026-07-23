@@ -10,3 +10,5 @@ export * from './SyncStatusBadge';
 export * from './LoadSuggestionBadge';
 // Heatmap de asistencia estilo commit graph de GitHub (home simple)
 export * from './HabitHeatmap';
+// Banner de aviso de servicio del gym en la home
+export * from './AvisoBanner';

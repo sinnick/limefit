@@ -23,6 +23,7 @@ import {
   Reserva,
   ReservaResultado,
   Anuncio,
+  AvisoServicio,
 } from '../types';
 
 // ============================================================================
@@ -765,6 +766,20 @@ export const anunciosApi = {
   getList: async (): Promise<Anuncio[]> => {
     const response = await api.post<{ status: string; data: any[] }>('/anuncios/list', {});
     return (response.data.data ?? []).map(adaptAnuncio);
+  },
+
+  // POST /anuncios/banner → el aviso de servicio destacado vigente, o null.
+  getBanner: async (): Promise<AvisoServicio | null> => {
+    const response = await api.post<{ status: string; data: any }>('/anuncios/banner', {});
+    const a = response.data.data;
+    if (!a) return null;
+    return {
+      id: a._id != null ? String(a._id) : '',
+      titulo: a.TITULO ?? '',
+      cuerpo: a.CUERPO ?? '',
+      nivel: a.NIVEL === 'importante' ? 'importante' : 'info',
+      fechaVencimiento: a.FECHA_VENCIMIENTO != null ? String(a.FECHA_VENCIMIENTO) : undefined,
+    };
   },
 };
 

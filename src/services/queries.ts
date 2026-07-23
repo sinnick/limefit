@@ -296,6 +296,17 @@ export const useAnunciosQuery = () =>
     refetchOnWindowFocus: false,
   });
 
+// Banner de aviso de servicio de la home. staleTime corto (2 min): un aviso de
+// "sede cerrada hoy" debe aparecer/desaparecer pronto sin reinstalar la app.
+export const useAvisoBannerQuery = () =>
+  useQuery({
+    queryKey: [...QUERY_KEYS.ANUNCIOS, 'banner'],
+    queryFn: () => anunciosApi.getBanner(),
+    staleTime: 2 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  });
+
 // --- Mutations (ONLINE-FIRST) ---
 // El DNI se lee del userStore dentro del hook (como useUpdateProfile). En onSuccess
 // invalidan CLASES + RESERVAS (sin el dni → invalida todas las variantes) para
