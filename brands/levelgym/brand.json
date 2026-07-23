@@ -14,9 +14,9 @@
     "splashBackgroundColor": "#141414"
   },
   "palette": {
-    "accent": "#DA100C",
-    "accentDark": "#A60D0A",
-    "accentLight": "#DD183B",
+    "accent": "#C4211D",
+    "accentDark": "#8F1815",
+    "accentLight": "#E0544A",
     "background": "#141414",
     "surface": "#1C1C1C",
     "surfaceLight": "#262626",
