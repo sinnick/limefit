@@ -74,6 +74,13 @@ export default ({ config }: ConfigContext): ExpoConfig => {
           cameraPermission: 'Permitir $(PRODUCT_NAME) usar la cámara para escanear el QR de asistencia.',
         },
       ],
+      [
+        'expo-image-picker',
+        {
+          photosPermission: 'Permitir $(PRODUCT_NAME) acceder a tus fotos para elegir tu foto de perfil.',
+          cameraPermission: 'Permitir $(PRODUCT_NAME) usar la cámara para tomar tu foto de perfil.',
+        },
+      ],
       'expo-notifications',
     ],
   };

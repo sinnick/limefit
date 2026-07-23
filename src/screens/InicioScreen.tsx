@@ -180,10 +180,11 @@ export const InicioScreen: React.FC<InicioScreenProps> = ({ navigation }) => {
     marcarAsistencia({ metodo: 'manual' });
   };
 
-  // El engranaje del header abre el menú de cuenta. Antes no hacía nada y el
-  // logout vivía como texto suelto al fondo del scroll: se unifica acá.
+  // El engranaje del header abre el menú de cuenta: editar perfil (foto, datos)
+  // o cerrar sesión.
   const abrirCuenta = () => {
     Alert.alert(user?.NAME || 'Tu cuenta', undefined, [
+      { text: 'Editar perfil', onPress: () => navigation.navigate('EditarPerfil') },
       { text: 'Cerrar sesión', style: 'destructive', onPress: logout },
       { text: 'Cancelar', style: 'cancel' },
     ]);

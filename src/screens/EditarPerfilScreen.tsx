@@ -8,8 +8,10 @@ import {
   Image,
   KeyboardAvoidingView,
   Platform,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { fontFamily } from '../constants/theme';
@@ -70,6 +72,50 @@ export const EditarPerfilScreen: React.FC<EditarPerfilScreenProps> = ({ navigati
   const [foto, setFoto] = useState(user?.FOTO ?? '');
   const [sexo, setSexo] = useState<SexoOption | ''>('');
   const [pesoObjetivo, setPesoObjetivo] = useState('');
+  const [subiendoFoto, setSubiendoFoto] = useState(false);
+
+  // Selección de foto: la imagen se recorta cuadrada, se reduce y se guarda como
+  // data-URL base64 (el backend acepta `foto` así; el schema la acota a ~2 MB).
+  const elegirFoto = async (origen: 'galeria' | 'camara') => {
+    try {
+      const permiso =
+        origen === 'camara'
+          ? await ImagePicker.requestCameraPermissionsAsync()
+          : await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permiso.granted) {
+        toast.error('Necesitamos permiso para acceder a tu ' + (origen === 'camara' ? 'cámara' : 'galería'));
+        return;
+      }
+      setSubiendoFoto(true);
+      const opts: ImagePicker.ImagePickerOptions = {
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.5,
+        base64: true,
+      };
+      const res =
+        origen === 'camara'
+          ? await ImagePicker.launchCameraAsync(opts)
+          : await ImagePicker.launchImageLibraryAsync(opts);
+      if (!res.canceled && res.assets?.[0]?.base64) {
+        setFoto(`data:image/jpeg;base64,${res.assets[0].base64}`);
+      }
+    } catch {
+      toast.error('No pudimos cargar la foto');
+    } finally {
+      setSubiendoFoto(false);
+    }
+  };
+
+  const abrirSelectorFoto = () => {
+    Alert.alert('Foto de perfil', undefined, [
+      { text: 'Tomar foto', onPress: () => elegirFoto('camara') },
+      { text: 'Elegir de la galería', onPress: () => elegirFoto('galeria') },
+      ...(foto ? [{ text: 'Quitar foto', style: 'destructive' as const, onPress: () => setFoto('') }] : []),
+      { text: 'Cancelar', style: 'cancel' as const },
+    ]);
+  };
 
   const getInitials = (): string => {
     const base = `${nombre} ${apellido}`.trim() || user?.NAME || '';
@@ -168,6 +214,19 @@ export const EditarPerfilScreen: React.FC<EditarPerfilScreenProps> = ({ navigati
           height: 100,
           borderRadius: 50,
         },
+        avatarCamBadge: {
+          position: 'absolute',
+          right: 0,
+          bottom: 0,
+          width: 32,
+          height: 32,
+          borderRadius: 16,
+          backgroundColor: colors.lime,
+          justifyContent: 'center',
+          alignItems: 'center',
+          borderWidth: 2,
+          borderColor: colors.background,
+        },
         avatarText: {
           fontFamily: fontFamily.bold,
           fontSize: 32,
@@ -237,15 +296,32 @@ export const EditarPerfilScreen: React.FC<EditarPerfilScreenProps> = ({ navigati
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        {/* Avatar (preview de la URL ingresada) */}
+        {/* Avatar tocable → tomar/elegir foto */}
         <View style={styles.avatarSection}>
-          <View style={styles.avatarContainer}>
-            {foto.trim() ? (
-              <Image source={{ uri: foto.trim() }} style={styles.avatar} />
-            ) : (
-              <Text style={styles.avatarText}>{getInitials()}</Text>
-            )}
-          </View>
+          <TouchableOpacity
+            onPress={abrirSelectorFoto}
+            activeOpacity={0.85}
+            disabled={subiendoFoto}
+            accessibilityRole="button"
+            accessibilityLabel="Cambiar foto de perfil"
+          >
+            <View style={styles.avatarContainer}>
+              {foto.trim() ? (
+                <Image source={{ uri: foto.trim() }} style={styles.avatar} />
+              ) : (
+                <Text style={styles.avatarText}>{getInitials()}</Text>
+              )}
+              {/* Badge de cámara sobre el avatar */}
+              <View style={styles.avatarCamBadge}>
+                <Ionicons name="camera" size={16} color={colors.white} />
+              </View>
+            </View>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={abrirSelectorFoto} disabled={subiendoFoto}>
+            <Text style={[styles.avatarHint, { color: colors.lime }]}>
+              {subiendoFoto ? 'Cargando…' : foto ? 'Cambiar foto' : 'Agregar foto'}
+            </Text>
+          </TouchableOpacity>
           <Text style={styles.avatarHint}>DNI: {user?.DNI ?? '—'}</Text>
         </View>
 
@@ -309,19 +385,7 @@ export const EditarPerfilScreen: React.FC<EditarPerfilScreenProps> = ({ navigati
         <View style={{ height: 16 }} />
 
         <Card variant="default" padding="lg">
-          <Text style={styles.sectionTitle}>Foto y objetivos</Text>
-
-          <Input
-            label="Foto (URL)"
-            value={foto}
-            onChangeText={setFoto}
-            placeholder="https://..."
-            keyboardType="url"
-            autoCapitalize="none"
-            autoCorrect={false}
-            hint="Pegá la URL de una imagen"
-            leftIcon={<Ionicons name="image-outline" size={20} color={colors.textSecondary} />}
-          />
+          <Text style={styles.sectionTitle}>Objetivos</Text>
 
           <Input
             label="Peso objetivo (kg)"
